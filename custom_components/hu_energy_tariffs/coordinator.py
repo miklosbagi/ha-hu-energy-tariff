@@ -141,11 +141,10 @@ class HuEnergyTariffsCoordinator(DataUpdateCoordinator[TariffResult]):
 
         self._maybe_roll_tariff_year(now)
 
-        pricing_period = self._site.pricing_period_for(now)
         result, new_state = self._strategy.calculate(
             now=now,
             delta_kwh=accepted_delta,
-            pricing_period=pricing_period,
+            pricing_periods=self._site.pricing_periods,
             state=self._state,
         )
         # calculate() intentionally never sees the raw source reading -
@@ -250,9 +249,8 @@ class HuEnergyTariffsCoordinator(DataUpdateCoordinator[TariffResult]):
         returned (discarded) state is never persisted - the next real
         event recomputes fee accrual from the true last-accrued date."""
         assert self._state is not None
-        pricing_period = self._site.pricing_period_for(now)
         result, _discarded_state = self._strategy.calculate(
-            now=now, delta_kwh=0.0, pricing_period=pricing_period, state=self._state
+            now=now, delta_kwh=0.0, pricing_periods=self._site.pricing_periods, state=self._state
         )
         return result
 

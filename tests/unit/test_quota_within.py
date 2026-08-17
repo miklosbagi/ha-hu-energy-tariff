@@ -11,7 +11,7 @@ def test_quota_within(now, a1_pricing_period, strategy):
     state = make_state(tariff_year_start=date(2025, 8, 1), last_valid_source_kwh=100.0)
 
     result, new_state = strategy.calculate(
-        now=now, delta_kwh=5.0, pricing_period=a1_pricing_period, state=state
+        now=now, delta_kwh=5.0, pricing_periods=(a1_pricing_period,), state=state
     )
 
     assert result.discounted_consumption_kwh == 5.0

@@ -34,7 +34,7 @@ def test_fixed_fee_accrues_pro_rata_daily(strategy):
 
     now = datetime(2026, 3, 6, 12, 0, tzinfo=timezone.utc)  # 5 full days elapsed
     result, new_state = strategy.calculate(
-        now=now, delta_kwh=0.0, pricing_period=pricing_period, state=state
+        now=now, delta_kwh=0.0, pricing_periods=(pricing_period,), state=state
     )
 
     assert result.fixed_cost_ft == pytest.approx(500.0)
@@ -49,7 +49,7 @@ def test_fixed_fee_accrual_is_idempotent_within_the_same_day(strategy):
 
     now = datetime(2026, 3, 6, 18, 0, tzinfo=timezone.utc)
     result, _ = strategy.calculate(
-        now=now, delta_kwh=0.0, pricing_period=pricing_period, state=state
+        now=now, delta_kwh=0.0, pricing_periods=(pricing_period,), state=state
     )
 
     assert result.fixed_cost_ft == pytest.approx(0.0)
