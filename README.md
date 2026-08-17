@@ -2,13 +2,13 @@
 
 # Hungarian Energy Tariffs / Magyar Energia Tarifák
 
-[![CI](https://github.com/miklosbagi/ha-hu-energy-tariffs/actions/workflows/ci.yml/badge.svg)](https://github.com/miklosbagi/ha-hu-energy-tariffs/actions/workflows/ci.yml)
-[![E2E](https://github.com/miklosbagi/ha-hu-energy-tariffs/actions/workflows/e2e.yml/badge.svg)](https://github.com/miklosbagi/ha-hu-energy-tariffs/actions/workflows/e2e.yml)
-[![CodeQL](https://github.com/miklosbagi/ha-hu-energy-tariffs/actions/workflows/codeql.yml/badge.svg)](https://github.com/miklosbagi/ha-hu-energy-tariffs/actions/workflows/codeql.yml)
+[![CI](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/ci.yml/badge.svg)](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/ci.yml)
+[![E2E](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/e2e.yml/badge.svg)](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/e2e.yml)
+[![CodeQL](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/codeql.yml/badge.svg)](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/codeql.yml)
 <br>
-[![Release](https://img.shields.io/github/v/release/miklosbagi/ha-hu-energy-tariffs?sort=semver)](https://github.com/miklosbagi/ha-hu-energy-tariffs/releases)
-[![Maintained](https://img.shields.io/badge/maintained-yes-brightgreen)](https://github.com/miklosbagi/ha-hu-energy-tariffs/pulse)
-[![License: MIT](https://img.shields.io/github/license/miklosbagi/ha-hu-energy-tariffs)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/miklosbagi/ha-hu-energy-tariff?sort=semver)](https://github.com/miklosbagi/ha-hu-energy-tariff/releases)
+[![Maintained](https://img.shields.io/badge/maintained-yes-brightgreen)](https://github.com/miklosbagi/ha-hu-energy-tariff/pulse)
+[![License: MIT](https://img.shields.io/github/license/miklosbagi/ha-hu-energy-tariff)](LICENSE)
 
 A Home Assistant custom integration that calculates current electricity prices, discounted-quota usage, and estimated costs for **Hungarian residential electricity tariffs**, using any existing Home Assistant grid-import energy sensor — meter/vendor agnostic, wired into the native **Energy Dashboard**.
 
