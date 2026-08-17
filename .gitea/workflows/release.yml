@@ -33,9 +33,16 @@ jobs:
           LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
         run: |
           echo "PR labels: $LABELS_JSON"
-          HAS_MAJOR=$(echo "$LABELS_JSON" | python3 -c "import json,sys; print('Tag/Major' in json.load(sys.stdin))")
-          HAS_MINOR=$(echo "$LABELS_JSON" | python3 -c "import json,sys; print('Tag/Minor' in json.load(sys.stdin))")
-          HAS_PATCH=$(echo "$LABELS_JSON" | python3 -c "import json,sys; print('Tag/Patch' in json.load(sys.stdin))")
+          # toJson() on an empty label set evaluates to the literal
+          # string `null` (not `[]`) on at least this Gitea instance's
+          # expression engine, unlike GitHub's - guard against that.
+          # This case matters here specifically: "remove every Tag/*
+          # label" is a documented, intentional way to skip
+          # tagging/releasing (see docs/RELEASING.md), so it must
+          # resolve to level=none, not crash the workflow.
+          HAS_MAJOR=$(echo "$LABELS_JSON" | python3 -c "import json,sys; data = json.load(sys.stdin); print('Tag/Major' in (data if isinstance(data, list) else []))")
+          HAS_MINOR=$(echo "$LABELS_JSON" | python3 -c "import json,sys; data = json.load(sys.stdin); print('Tag/Minor' in (data if isinstance(data, list) else []))")
+          HAS_PATCH=$(echo "$LABELS_JSON" | python3 -c "import json,sys; data = json.load(sys.stdin); print('Tag/Patch' in (data if isinstance(data, list) else []))")
 
           if [ "$HAS_MAJOR" = "True" ]; then
             echo "level=major" >> "$GITHUB_OUTPUT"

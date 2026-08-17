@@ -18,7 +18,11 @@ jobs:
           LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
         run: |
           echo "PR labels: $LABELS_JSON"
-          HAS_DO_NOT_MERGE=$(echo "$LABELS_JSON" | python3 -c "import json,sys; print('DO_NOT_MERGE' in json.load(sys.stdin))")
+          # toJson() on an empty label set evaluates to the literal
+          # string `null` (not `[]`) on at least this Gitea instance's
+          # expression engine, unlike GitHub's - guard against that
+          # rather than let json.load hand back None and crash `in`.
+          HAS_DO_NOT_MERGE=$(echo "$LABELS_JSON" | python3 -c "import json, sys; data = json.load(sys.stdin); print('DO_NOT_MERGE' in (data if isinstance(data, list) else []))")
           if [ "$HAS_DO_NOT_MERGE" = "True" ]; then
             echo "::error::This PR is labeled DO_NOT_MERGE - remove the label to allow merging."
             exit 1
