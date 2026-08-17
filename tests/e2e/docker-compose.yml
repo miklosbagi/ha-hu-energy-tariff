@@ -10,7 +10,7 @@
 # (.github/dependabot.yml) - no need to bump it by hand.
 services:
   homeassistant:
-    image: homeassistant/home-assistant:2025.10.1
+    image: homeassistant/home-assistant:2026.8.1
     volumes:
       - ./ha_config:/config
       - ../../custom_components/hu_energy_tariffs:/config/custom_components/hu_energy_tariffs:ro
