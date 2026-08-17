@@ -9,15 +9,22 @@ frontend comes up at all with custom_components/hu_energy_tariffs
 mounted, and the container logs show no import/setup traceback for our
 domain - HA validates every custom_components manifest at startup even
 without a configured entry, so a broken import/manifest surfaces here.
+
+"Frontend comes up" is verified by the docker-compose healthcheck
+alone (`docker compose up --wait`, in the docker_compose_up fixture) -
+deliberately not by an additional HTTP request from the test process
+itself. The healthcheck runs inside the container via loopback, so
+it's immune to a class of runner network topology (Docker-outside-of-
+Docker job containers that can't route to sibling bridge networks -
+confirmed present on at least one runner this suite runs on) that an
+external request would be exposed to.
 """
 from __future__ import annotations
 
-from .conftest import container_logs, wait_for_frontend
+from .conftest import container_logs
 
 
 def test_home_assistant_boots_with_integration_mounted(docker_compose_up):
-    wait_for_frontend()
-
     logs = container_logs()
     error_lines = [
         line
