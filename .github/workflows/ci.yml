@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit-tests:
+    name: unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run unit tests with coverage
+        run: |
+          pytest tests/unit -v \
+            --cov=custom_components/hu_energy_tariffs \
+            --cov-report=term-missing \
+            --cov-report=json:coverage-head.json
+
+      - name: Enforce 80% coverage floor
+        run: |
+          python - <<'PY'
+          import json, sys
+          pct = json.load(open("coverage-head.json"))["totals"]["percent_covered"]
+          print(f"Head coverage: {pct:.2f}%")
+          sys.exit(0 if pct >= 80 else 1)
+          PY
+
+      # PR-only: compare against the base branch's coverage so a PR can't
+      # quietly erode coverage even while staying above the 80% floor.
+      # Best-effort - if the base branch predates coverage tooling (e.g.
+      # the PR that first introduces it), this step is allowed to fail
+      # and only the floor above is enforced.
+      - name: Checkout base branch for coverage-drop comparison
+        if: github.event_name == 'pull_request'
+        run: git worktree add /tmp/base-ref ${{ github.event.pull_request.base.sha }}
+
+      - name: Run base-branch coverage (best-effort)
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        working-directory: /tmp/base-ref
+        run: |
+          python -m venv /tmp/base-venv
+          /tmp/base-venv/bin/pip install --upgrade pip -q
+          /tmp/base-venv/bin/pip install -r requirements-dev.txt -q
+          /tmp/base-venv/bin/pytest tests/unit -q \
+            --cov=custom_components/hu_energy_tariffs \
+            --cov-report=json:/tmp/coverage-base.json
+
+      - name: Enforce max 10-point coverage drop vs. base branch
+        if: github.event_name == 'pull_request'
+        run: python .github/scripts/check_coverage_drop.py --head coverage-head.json --base /tmp/coverage-base.json --max-drop 10

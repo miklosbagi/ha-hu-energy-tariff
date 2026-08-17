@@ -1,0 +1,19 @@
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["custom_components/hu_energy_tariffs"]
+branch = true
+
+[tool.coverage.report]
+# CI additionally enforces a max-10-point coverage drop vs. the PR's base
+# branch (see .github/workflows/ci.yml) - fail_under is only the static
+# floor, checked on every run including outside CI.
+fail_under = 80
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

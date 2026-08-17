@@ -1,0 +1,90 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Hungarian Energy Tariffs",
+        "description": "Select the Home Assistant energy sensor to track and give this configuration a name.",
+        "data": {
+          "name": "Name",
+          "source_entity_id": "Grid import energy sensor"
+        }
+      },
+      "provider": {
+        "title": "Provider",
+        "data": {
+          "provider_id": "Provider"
+        }
+      },
+      "distribution_area": {
+        "title": "Distribution area",
+        "data": {
+          "distribution_area_id": "Distribution area"
+        }
+      },
+      "tariff": {
+        "title": "Tariff",
+        "data": {
+          "tariff_plan_id": "Tariff"
+        }
+      },
+      "tariff_params": {
+        "title": "Tariff parameters",
+        "data": {
+          "quota_kwh_per_year": "Annual discounted quota (kWh)",
+          "discounted_price_ft_per_kwh": "Discounted price (Ft/kWh, gross)",
+          "market_price_ft_per_kwh": "Market price (Ft/kWh, gross)",
+          "fixed_monthly_fee_ft": "Fixed monthly fee (Ft)"
+        }
+      }
+    },
+    "error": {
+      "source_entity_not_found": "The selected entity could not be found.",
+      "source_entity_not_energy": "The selected entity is not an energy sensor.",
+      "source_entity_not_total_increasing": "The selected entity must have a total or total_increasing state class."
+    }
+  },
+  "options": {
+    "step": {
+      "provider": {
+        "title": "Provider",
+        "data": {
+          "provider_id": "Provider"
+        }
+      },
+      "distribution_area": {
+        "title": "Distribution area",
+        "data": {
+          "distribution_area_id": "Distribution area"
+        }
+      },
+      "tariff": {
+        "title": "Tariff",
+        "data": {
+          "tariff_plan_id": "Tariff"
+        }
+      },
+      "tariff_params": {
+        "title": "Tariff parameters",
+        "data": {
+          "quota_kwh_per_year": "Annual discounted quota (kWh)",
+          "discounted_price_ft_per_kwh": "Discounted price (Ft/kWh, gross)",
+          "market_price_ft_per_kwh": "Market price (Ft/kWh, gross)",
+          "fixed_monthly_fee_ft": "Fixed monthly fee (Ft)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_price": { "name": "Current price" },
+      "total_consumption": { "name": "Total consumption" },
+      "discounted_consumption": { "name": "Discounted consumption" },
+      "market_consumption": { "name": "Market consumption" },
+      "discounted_quota": { "name": "Discounted quota" },
+      "remaining_discounted_quota": { "name": "Remaining discounted quota" },
+      "variable_cost": { "name": "Variable cost" },
+      "fixed_cost": { "name": "Fixed cost" },
+      "total_cost": { "name": "Total cost" }
+    }
+  }
+}

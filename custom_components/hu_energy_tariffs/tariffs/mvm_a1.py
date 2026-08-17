@@ -1,0 +1,162 @@
+"""A1: residential flat-rate tariff with a prorated annual discount quota.
+
+Discounted quota: 2523 kWh / tariff year / metering point (default,
+configurable). Tariff year: 1 Aug - 31 Jul. The eligible quota at any
+point in time is prorated by elapsed days within the tariff year, so a
+single consumption delta that crosses the remaining-quota boundary is
+split between discounted and market price rather than priced as a whole
+at one rate (see the spec's 2.0 kWh delta / 0.7 kWh remaining example,
+reproduced in tests/unit/test_quota_boundary_split.py).
+"""
+from __future__ import annotations
+
+from datetime import date, datetime, timedelta
+
+from ..models import PersistedMeterState, PricingPeriod, TariffPlan, TariffResult
+from ..tariff_engine import TariffStrategy
+from .registry import register, register_tariff_plan
+
+register_tariff_plan(
+    TariffPlan(
+        id="mvm_a1",
+        code="A1",
+        name="A1 (flat rate, discounted quota)",
+        name_hu="A1 (egyzónás, kedvezményes kerettel)",
+        requires_separate_meter=False,
+        strategy_key="mvm_a1",
+    )
+)
+
+
+def _tariff_year_start_for(when: date) -> date:
+    """1 Aug of the tariff year containing `when`."""
+    if when.month >= 8:
+        return date(when.year, 8, 1)
+    return date(when.year - 1, 8, 1)
+
+
+def _tariff_year_end_exclusive(start: date) -> date:
+    """1 Aug of the following year (exclusive upper bound).
+
+    Naturally yields a 365- or 366-day window depending on whether the
+    second calendar year (which contains February) is a leap year.
+    """
+    return date(start.year + 1, 8, 1)
+
+
+def _days_in_month(year: int, month: int) -> int:
+    if month == 12:
+        next_month = date(year + 1, 1, 1)
+    else:
+        next_month = date(year, month + 1, 1)
+    return (next_month - date(year, month, 1)).days
+
+
+@register
+class A1Strategy(TariffStrategy):
+    strategy_key = "mvm_a1"
+
+    def tariff_year_bounds(self, now: datetime) -> tuple[date, date]:
+        start = _tariff_year_start_for(now.date())
+        return start, _tariff_year_end_exclusive(start)
+
+    def _eligible_quota_kwh(
+        self, now: datetime, quota_kwh_per_year: float, tariff_year_start: date
+    ) -> float:
+        _, end_exclusive = self.tariff_year_bounds(now)
+        days_in_tariff_year = (end_exclusive - tariff_year_start).days
+        elapsed_days = (now.date() - tariff_year_start).days + 1
+        elapsed_days = max(0, min(elapsed_days, days_in_tariff_year))
+        return quota_kwh_per_year * elapsed_days / days_in_tariff_year
+
+    def calculate(
+        self,
+        *,
+        now: datetime,
+        delta_kwh: float,
+        pricing_period: PricingPeriod,
+        state: PersistedMeterState,
+    ) -> tuple[TariffResult, PersistedMeterState]:
+        quota_kwh_per_year = pricing_period.quota_kwh_per_year or 0.0
+        eligible_quota = self._eligible_quota_kwh(
+            now, quota_kwh_per_year, state.tariff_year_start
+        )
+
+        remaining_quota = max(0.0, eligible_quota - state.accumulated_discounted_kwh)
+        discounted_delta = max(0.0, min(delta_kwh, remaining_quota))
+        market_delta = max(0.0, delta_kwh - discounted_delta)
+
+        price_components = pricing_period.price_components
+        discounted_price = price_components.effective_gross_price(discounted=True)
+        market_price = price_components.effective_gross_price(discounted=False)
+
+        variable_cost_delta = (
+            discounted_delta * discounted_price + market_delta * market_price
+        )
+
+        new_accumulated_discounted = state.accumulated_discounted_kwh + discounted_delta
+        new_accumulated_market = state.accumulated_market_kwh + market_delta
+        new_variable_cost = state.accumulated_variable_cost_ft + variable_cost_delta
+
+        new_fixed_cost, new_fee_accrued_date = self._accrue_fixed_fee(
+            now, pricing_period.fixed_monthly_fee_ft, state
+        )
+
+        remaining_quota_after = max(0.0, eligible_quota - new_accumulated_discounted)
+        # Price applicable to the *next* increment of consumption - this
+        # is what's exposed as the Energy Dashboard current-price entity.
+        current_price = discounted_price if remaining_quota_after > 0 else market_price
+
+        total_consumption = new_accumulated_discounted + new_accumulated_market
+        total_cost = new_variable_cost + new_fixed_cost
+
+        result = TariffResult(
+            timestamp=now,
+            current_price=current_price,
+            total_consumption_kwh=total_consumption,
+            discounted_consumption_kwh=new_accumulated_discounted,
+            market_consumption_kwh=new_accumulated_market,
+            discounted_quota_kwh=eligible_quota,
+            quota_used_kwh=new_accumulated_discounted,
+            quota_remaining_kwh=remaining_quota_after,
+            variable_cost_ft=new_variable_cost,
+            fixed_cost_ft=new_fixed_cost,
+            total_cost_ft=total_cost,
+        )
+
+        new_state = PersistedMeterState(
+            schema_version=state.schema_version,
+            meter_id=state.meter_id,
+            tariff_year_start=state.tariff_year_start,
+            source_baseline_kwh=state.source_baseline_kwh,
+            last_valid_source_kwh=state.last_valid_source_kwh,
+            accumulated_discounted_kwh=new_accumulated_discounted,
+            accumulated_market_kwh=new_accumulated_market,
+            accumulated_variable_cost_ft=new_variable_cost,
+            accumulated_fixed_cost_ft=new_fixed_cost,
+            fixed_fee_last_accrued_date=new_fee_accrued_date,
+            last_processed_timestamp=now,
+            consecutive_invalid_reads=0,
+            pending_suspect_reading_kwh=None,
+            pending_suspect_reading_count=0,
+        )
+
+        return result, new_state
+
+    @staticmethod
+    def _accrue_fixed_fee(
+        now: datetime, fixed_monthly_fee_ft: float, state: PersistedMeterState
+    ) -> tuple[float, date]:
+        """Accrue the fixed monthly fee daily, pro-rata, for a smoothly
+        moving cost figure rather than a once-a-month jump. A day is only
+        accrued once it has fully elapsed, so this is idempotent when
+        called more than once on the same day."""
+        last_accrued = state.fixed_fee_last_accrued_date or state.tariff_year_start
+        accumulated = state.accumulated_fixed_cost_ft
+        current_date = last_accrued
+        one_day = timedelta(days=1)
+        while current_date < now.date():
+            days_in_month = _days_in_month(current_date.year, current_date.month)
+            accumulated += fixed_monthly_fee_ft / days_in_month
+            current_date = current_date + one_day
+        return accumulated, current_date

@@ -1,0 +1,32 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage*.json
+htmlcov/
+dist/
+build/
+.env
+.DS_Store
+
+# Claude Code session state for this working directory - not repo content
+.claude/
+
+# e2e HA container state - never commit a live instance's data. The
+# container regenerates all of this on every `docker compose up`.
+tests/e2e/ha_config/.storage/
+tests/e2e/ha_config/.cloud/
+tests/e2e/ha_config/.HA_VERSION
+tests/e2e/ha_config/.ha_run.lock
+tests/e2e/ha_config/home-assistant.log*
+tests/e2e/ha_config/*.db
+tests/e2e/ha_config/tts/
+tests/e2e/ha_config/deps/
+tests/e2e/ha_config/blueprints/
+tests/e2e/ha_config/custom_components/
