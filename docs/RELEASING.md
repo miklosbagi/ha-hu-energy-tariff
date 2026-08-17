@@ -24,6 +24,10 @@ Auto-generated release notes are a changelog, not a summary - they list merged P
 
 `custom_components/hu_energy_tariffs/manifest.json`'s `version` field is **not** automatically kept in sync with the release tag by this workflow - bumping it would require the workflow to commit back to a protected `main` branch. Bump it manually as part of a normal PR when preparing a release, or pick it up as a documented follow-up if this becomes a recurring source of drift.
 
+## Mirrored to a private Gitea instance
+
+This repo is also pushed to a private, self-hosted Gitea instance as a working mirror (set up so development could continue during a GitHub outage). `.gitea/workflows/` holds Gitea Actions equivalents of everything under `.github/workflows/` - same labels, same `Tag/Patch`/`Tag/Minor`/`Tag/Major` release mechanism, same `DO_NOT_MERGE` merge-blocking check - kept as close to the GitHub versions as the two platforms' APIs allow. The one real difference: Gitea's release API has no equivalent to GitHub's PR-based `--generate-notes`, so the Gitea release workflow generates a plain commit-log changelog instead; the human/agent follow-up summary step above still applies there too.
+
 ## Why labels instead of, say, Conventional Commits
 
 The repo's commit history isn't currently structured enough to reliably infer patch/minor/major from commit messages (squash-merged PRs mean one commit per change, but message conventions weren't enforced from day one). A label is an explicit, visible, easily-overridden decision made once per PR - visible in review, not inferred after the fact.

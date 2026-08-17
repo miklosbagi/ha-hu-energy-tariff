@@ -1,0 +1,26 @@
+name: Label PR
+
+# Gitea Actions equivalent of .github/workflows/label-pr.yml. Uses the
+# Gitea REST API directly (curl) rather than the `gh` CLI, which has no
+# Gitea equivalent guaranteed present on the runner.
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  add-default-tag-label:
+    name: add-default-tag-label
+    runs-on: ubuntu-latest
+    steps:
+      # Every PR gets Tag/Patch by default (see docs/RELEASING.md) - the
+      # author can remove it (or swap for Tag/Minor / Tag/Major) before
+      # merge; removing every Tag/* label means the merge won't tag/release.
+      - name: Add Tag/Patch label
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          curl -sSf -X POST \
+            -H "Authorization: token ${GITEA_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "${{ github.server_url }}/api/v1/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" \
+            -d '{"labels":["Tag/Patch"]}'

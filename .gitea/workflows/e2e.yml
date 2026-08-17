@@ -1,0 +1,32 @@
+name: E2E
+
+# Gitea Actions equivalent of .github/workflows/e2e.yml. Requires the
+# runner to have Docker available (docker compose up) - unverified for
+# this Gitea instance's runner as of writing; if this job fails to even
+# start docker, that's an infra gap in the runner, not a code issue.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-e2e.txt
+
+      - name: Run e2e smoke test
+        run: pytest tests/e2e -v
