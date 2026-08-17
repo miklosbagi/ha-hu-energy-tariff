@@ -1,0 +1,21 @@
+# Local end-to-end test rig: boots a real Home Assistant container with
+# this integration mounted in, so tests/e2e/test_smoke_startup.py can
+# verify it actually loads there - something the headless tests/unit/
+# suite (which never boots HA) cannot prove. Mirrors the docker-compose
+# + pytest pattern used for e2e testing in the sigennut project.
+#
+# Usage: docker compose -f tests/e2e/docker-compose.yml up -d --wait
+services:
+  homeassistant:
+    image: homeassistant/home-assistant:2025.10.1
+    volumes:
+      - ./ha_config:/config
+      - ../../custom_components/hu_energy_tariffs:/config/custom_components/hu_energy_tariffs:ro
+    ports:
+      - "8123:8123"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8123/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s

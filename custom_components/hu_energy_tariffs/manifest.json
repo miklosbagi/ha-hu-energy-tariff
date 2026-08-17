@@ -1,0 +1,12 @@
+{
+  "domain": "hu_energy_tariffs",
+  "name": "Hungarian Energy Tariffs",
+  "codeowners": ["@miklosbagi"],
+  "config_flow": true,
+  "documentation": "https://github.com/miklosbagi/ha-hu-energy-tariffs",
+  "issue_tracker": "https://github.com/miklosbagi/ha-hu-energy-tariffs/issues",
+  "integration_type": "hub",
+  "iot_class": "calculated",
+  "requirements": [],
+  "version": "0.1.0"
+}
