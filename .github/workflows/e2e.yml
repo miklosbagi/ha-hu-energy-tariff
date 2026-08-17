@@ -22,12 +22,18 @@ jobs:
       # Deliberately its own requirements file, not requirements-dev.txt:
       # pytest-homeassistant-custom-component (used by tests/unit) enables
       # pytest-socket, which blocks the real HTTP calls this suite needs
-      # to make to the docker-compose'd Home Assistant container.
+      # to make to the docker-compose'd Home Assistant container. Also
+      # deliberately its own venv rather than the runner's ambient
+      # Python: GitHub's runners are always fresh so this isn't strictly
+      # needed here, but keeping it identical to the Gitea Actions
+      # version (.gitea/workflows/e2e.yml, where a shared/persistent
+      # runner made this matter for real) avoids the two drifting apart.
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-e2e.txt
+          python -m venv .venv-e2e
+          .venv-e2e/bin/python -m pip install --upgrade pip
+          .venv-e2e/bin/pip install -r requirements-e2e.txt
 
       # Docker + Compose v2 are preinstalled on GitHub-hosted ubuntu runners.
       - name: Run e2e smoke test
-        run: pytest tests/e2e -v
+        run: .venv-e2e/bin/pytest tests/e2e -v
