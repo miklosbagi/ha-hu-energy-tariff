@@ -14,7 +14,7 @@ from tests.unit.factories import make_state
 def test_quota_boundary_split(now, a1_pricing_period, strategy):
     tariff_year_start = date(2025, 8, 1)
     eligible_quota = strategy._eligible_quota_kwh(  # noqa: SLF001
-        now, a1_pricing_period.quota_kwh_per_year, tariff_year_start
+        now, (a1_pricing_period,), tariff_year_start
     )
     state = make_state(
         tariff_year_start=tariff_year_start,
@@ -23,7 +23,7 @@ def test_quota_boundary_split(now, a1_pricing_period, strategy):
     )
 
     result, new_state = strategy.calculate(
-        now=now, delta_kwh=2.0, pricing_period=a1_pricing_period, state=state
+        now=now, delta_kwh=2.0, pricing_periods=(a1_pricing_period,), state=state
     )
 
     discounted_added = new_state.accumulated_discounted_kwh - state.accumulated_discounted_kwh

@@ -16,7 +16,7 @@ def test_quota_exceeded(now, a1_pricing_period, strategy):
     )
 
     result, new_state = strategy.calculate(
-        now=now, delta_kwh=10.0, pricing_period=a1_pricing_period, state=state
+        now=now, delta_kwh=10.0, pricing_periods=(a1_pricing_period,), state=state
     )
 
     assert result.discounted_consumption_kwh == 2523.0

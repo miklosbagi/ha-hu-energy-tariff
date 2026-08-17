@@ -35,10 +35,19 @@ class TariffStrategy(ABC):
         *,
         now: datetime,
         delta_kwh: float,
-        pricing_period: PricingPeriod,
+        pricing_periods: tuple[PricingPeriod, ...],
         state: PersistedMeterState,
     ) -> tuple[TariffResult, PersistedMeterState]:
-        """Consume one delta and return the new result plus the state to persist."""
+        """Consume one delta and return the new result plus the state to persist.
+
+        Receives *every* configured PricingPeriod, not just the one
+        active `now` - a quota (or fixed-fee) formula that prorates over
+        elapsed days must weigh each period by only the days it was
+        actually active, or a mid-tariff-year quota/price edit would
+        retroactively apply the new rate to days it was never in effect
+        for. Which single period's price applies to *this* delta is still
+        a strategy-level decision (see `models.select_pricing_period`).
+        """
 
     @abstractmethod
     def tariff_year_bounds(self, now: datetime) -> tuple[date, date]:

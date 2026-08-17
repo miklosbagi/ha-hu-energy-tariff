@@ -10,9 +10,9 @@ reproduced in tests/unit/test_quota_boundary_split.py).
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
-from ..models import PersistedMeterState, PricingPeriod, TariffPlan, TariffResult
+from ..models import PersistedMeterState, PricingPeriod, TariffPlan, TariffResult, select_pricing_period
 from ..tariff_engine import TariffStrategy
 from .registry import register, register_tariff_plan
 
@@ -61,32 +61,59 @@ class A1Strategy(TariffStrategy):
         return start, _tariff_year_end_exclusive(start)
 
     def _eligible_quota_kwh(
-        self, now: datetime, quota_kwh_per_year: float, tariff_year_start: date
+        self,
+        now: datetime,
+        pricing_periods: tuple[PricingPeriod, ...],
+        tariff_year_start: date,
     ) -> float:
+        """Sum each pricing period's own prorated share of the annual
+        quota, weighted only by the days (within the current tariff
+        year, through today) that period was actually active.
+
+        Must NOT simply apply the currently-active period's
+        quota_kwh_per_year across the whole elapsed span: if the annual
+        quota changes mid-tariff-year (e.g. 2523 -> 3000 kWh via the
+        options flow), only days on/after the change should accrue at
+        the new rate - days before it already accrued at the old rate,
+        and that accrual must not change retroactively. Reduces exactly
+        to the single-period elapsed-days formula when only one period
+        has ever been configured.
+        """
         _, end_exclusive = self.tariff_year_bounds(now)
         days_in_tariff_year = (end_exclusive - tariff_year_start).days
-        elapsed_days = (now.date() - tariff_year_start).days + 1
-        elapsed_days = max(0, min(elapsed_days, days_in_tariff_year))
-        return quota_kwh_per_year * elapsed_days / days_in_tariff_year
+        range_end = now.date()
+
+        total = 0.0
+        for period in pricing_periods:
+            if period.quota_kwh_per_year is None:
+                continue
+            period_start = max(period.valid_from.date(), tariff_year_start)
+            period_end_exclusive = (
+                period.valid_to.date() if period.valid_to else range_end + timedelta(days=1)
+            )
+            period_last_day = min(period_end_exclusive - timedelta(days=1), range_end)
+            if period_last_day < period_start:
+                continue
+            days_active = (period_last_day - period_start).days + 1
+            total += period.quota_kwh_per_year * days_active / days_in_tariff_year
+        return total
 
     def calculate(
         self,
         *,
         now: datetime,
         delta_kwh: float,
-        pricing_period: PricingPeriod,
+        pricing_periods: tuple[PricingPeriod, ...],
         state: PersistedMeterState,
     ) -> tuple[TariffResult, PersistedMeterState]:
-        quota_kwh_per_year = pricing_period.quota_kwh_per_year or 0.0
-        eligible_quota = self._eligible_quota_kwh(
-            now, quota_kwh_per_year, state.tariff_year_start
-        )
+        active_period = select_pricing_period(pricing_periods, now)
+        eligible_quota = self._eligible_quota_kwh(now, pricing_periods, state.tariff_year_start)
 
         remaining_quota = max(0.0, eligible_quota - state.accumulated_discounted_kwh)
         discounted_delta = max(0.0, min(delta_kwh, remaining_quota))
         market_delta = max(0.0, delta_kwh - discounted_delta)
 
-        price_components = pricing_period.price_components
+        price_components = active_period.price_components
         discounted_price = price_components.effective_gross_price(discounted=True)
         market_price = price_components.effective_gross_price(discounted=False)
 
@@ -99,7 +126,7 @@ class A1Strategy(TariffStrategy):
         new_variable_cost = state.accumulated_variable_cost_ft + variable_cost_delta
 
         new_fixed_cost, new_fee_accrued_date = self._accrue_fixed_fee(
-            now, pricing_period.fixed_monthly_fee_ft, state
+            now, pricing_periods, state
         )
 
         remaining_quota_after = max(0.0, eligible_quota - new_accumulated_discounted)
@@ -145,18 +172,27 @@ class A1Strategy(TariffStrategy):
 
     @staticmethod
     def _accrue_fixed_fee(
-        now: datetime, fixed_monthly_fee_ft: float, state: PersistedMeterState
+        now: datetime, pricing_periods: tuple[PricingPeriod, ...], state: PersistedMeterState
     ) -> tuple[float, date]:
         """Accrue the fixed monthly fee daily, pro-rata, for a smoothly
         moving cost figure rather than a once-a-month jump. A day is only
         accrued once it has fully elapsed, so this is idempotent when
-        called more than once on the same day."""
+        called more than once on the same day.
+
+        Each day is accrued at whichever period was active *on that day*
+        (not today's active period applied across the whole gap) - same
+        reasoning as the quota proration above: a fee change must not
+        retroactively apply to days before it took effect.
+        """
         last_accrued = state.fixed_fee_last_accrued_date or state.tariff_year_start
         accumulated = state.accumulated_fixed_cost_ft
         current_date = last_accrued
         one_day = timedelta(days=1)
         while current_date < now.date():
+            day_period = select_pricing_period(
+                pricing_periods, datetime.combine(current_date, time.min, tzinfo=now.tzinfo)
+            )
             days_in_month = _days_in_month(current_date.year, current_date.month)
-            accumulated += fixed_monthly_fee_ft / days_in_month
+            accumulated += day_period.fixed_monthly_fee_ft / days_in_month
             current_date = current_date + one_day
         return accumulated, current_date

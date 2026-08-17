@@ -10,6 +10,7 @@ module.
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from enum import StrEnum
@@ -184,6 +185,22 @@ class Meter:
     unit: str | None = None
 
 
+def select_pricing_period(
+    pricing_periods: Sequence[PricingPeriod], timestamp: datetime
+) -> PricingPeriod:
+    """Select the pricing period covering `timestamp`.
+
+    Falls back to the most recent period if none covers it exactly (the
+    normal case for `timestamp` being beyond the last configured
+    valid_to) - a coordinator tick should never fail outright because of
+    a config edit race.
+    """
+    candidates = [p for p in pricing_periods if p.covers(timestamp)]
+    if candidates:
+        return max(candidates, key=lambda p: p.valid_from)
+    return max(pricing_periods, key=lambda p: p.valid_from)
+
+
 @dataclass(frozen=True, slots=True)
 class TariffSiteConfig:
     """Resolved config-entry payload.
@@ -204,14 +221,7 @@ class TariffSiteConfig:
     pricing_periods: tuple[PricingPeriod, ...]
 
     def pricing_period_for(self, timestamp: datetime) -> PricingPeriod:
-        candidates = [p for p in self.pricing_periods if p.covers(timestamp)]
-        if candidates:
-            return max(candidates, key=lambda p: p.valid_from)
-        # Normal case: `timestamp` is beyond the last configured
-        # valid_to (or there's a gap) - fall back to the most recent
-        # period rather than raising, so a coordinator tick never fails
-        # outright because of a config edit race.
-        return max(self.pricing_periods, key=lambda p: p.valid_from)
+        return select_pricing_period(self.pricing_periods, timestamp)
 
 
 @dataclass(frozen=True, slots=True)

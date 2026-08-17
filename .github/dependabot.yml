@@ -1,0 +1,28 @@
+version: 2
+updates:
+  # requirements-dev.txt and requirements-e2e.txt, both at repo root.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+
+  # Workflow action versions (actions/checkout, codeql-action, etc.).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+
+  # The e2e rig's homeassistant/home-assistant image tag - otherwise this
+  # only ever gets bumped by a human noticing it's stale (see
+  # docs/DESIGN.md's testing-strategy section and the e2e docker-compose
+  # comment).
+  - package-ecosystem: "docker-compose"
+    directory: "/tests/e2e"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"

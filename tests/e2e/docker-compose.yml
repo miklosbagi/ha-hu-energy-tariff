@@ -5,6 +5,9 @@
 # + pytest pattern used for e2e testing in the sigennut project.
 #
 # Usage: docker compose -f tests/e2e/docker-compose.yml up -d --wait
+#
+# The image tag is kept current by Dependabot's docker-compose ecosystem
+# (.github/dependabot.yml) - no need to bump it by hand.
 services:
   homeassistant:
     image: homeassistant/home-assistant:2025.10.1
