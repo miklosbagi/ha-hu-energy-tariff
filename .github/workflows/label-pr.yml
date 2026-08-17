@@ -1,0 +1,24 @@
+name: Label PR
+
+on:
+  pull_request:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  add-default-tag-label:
+    name: add-default-tag-label
+    runs-on: ubuntu-latest
+    steps:
+      # Every PR gets Tag/Patch by default (see docs/RELEASING.md) - the
+      # author can remove it (or swap for Tag/Minor / Tag/Major) before
+      # merge; removing every Tag/* label means the merge won't tag/release.
+      - name: Add Tag/Patch label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit "${{ github.event.pull_request.number }}" \
+            --add-label "Tag/Patch" \
+            --repo "${{ github.repository }}"

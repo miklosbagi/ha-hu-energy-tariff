@@ -1,14 +1,22 @@
+🇬🇧 **English** | 🇭🇺 [Magyar](README.hu.md)
+
 # Hungarian Energy Tariffs / Magyar Energia Tarifák
 
-A Home Assistant custom integration that calculates current electricity prices, discounted-quota usage, and estimated costs for **Hungarian residential electricity tariffs**, using any existing Home Assistant grid-import energy sensor — meter/vendor agnostic, wired into the native **Energy Dashboard**.
+[![CI](https://github.com/miklosbagi/ha-hu-energy-tariffs/actions/workflows/ci.yml/badge.svg)](https://github.com/miklosbagi/ha-hu-energy-tariffs/actions/workflows/ci.yml)
+[![E2E](https://github.com/miklosbagi/ha-hu-energy-tariffs/actions/workflows/e2e.yml/badge.svg)](https://github.com/miklosbagi/ha-hu-energy-tariffs/actions/workflows/e2e.yml)
+[![CodeQL](https://github.com/miklosbagi/ha-hu-energy-tariffs/actions/workflows/codeql.yml/badge.svg)](https://github.com/miklosbagi/ha-hu-energy-tariffs/actions/workflows/codeql.yml)
+<br>
+[![Release](https://img.shields.io/github/v/release/miklosbagi/ha-hu-energy-tariffs?sort=semver)](https://github.com/miklosbagi/ha-hu-energy-tariffs/releases)
+[![Maintained](https://img.shields.io/badge/maintained-yes-brightgreen)](https://github.com/miklosbagi/ha-hu-energy-tariffs/pulse)
+[![License: MIT](https://img.shields.io/github/license/miklosbagi/ha-hu-energy-tariffs)](LICENSE)
 
-Egy Home Assistant egyéni integráció, amely a magyarországi lakossági villamosenergia-tarifák (MVM, A1, A2, B, H) aktuális egységárát, a kedvezményes keret felhasználását és a becsült költségeket számolja ki bármely meglévő hálózati energiafogyasztás-mérő szenzor alapján, az Energy Dashboardba illesztve.
+A Home Assistant custom integration that calculates current electricity prices, discounted-quota usage, and estimated costs for **Hungarian residential electricity tariffs**, using any existing Home Assistant grid-import energy sensor — meter/vendor agnostic, wired into the native **Energy Dashboard**.
 
 Keywords: Home Assistant, Hungary, Hungarian, MVM, MVM Next, ESZ, A1, A2, H tarifa, 2523 kWh, rezsicsökkentés, electricity tariff, electricity cost, Energy Dashboard.
 
 ## Features
 
-- **Provider / Distribution area / Tariff / Pricing period / Meter** modeled as separable, first-class concepts — not hard-coded assumptions — so adding a new provider, DSO, or tariff scheme is a data change, not a redesign.
+- **Provider / Distribution area / Tariff / Pricing period / Meter** modeled as separable, first-class concepts — not hard-coded assumptions — so adding a new provider, DSO, or tariff scheme is a data change, not a redesign. See [docs/DESIGN.md](docs/DESIGN.md) for the reasoning.
 - **A1 tariff** (MVM/ESZ residential, flat-rate with a prorated annual discounted quota) implemented end-to-end.
 - Correct **2523 kWh/tariff-year** discounted-quota proration by elapsed days (1 Aug – 31 Jul tariff year, handling both 365- and 366-day years).
 - A single consumption delta that crosses the remaining-quota boundary is **split** between discounted and market price, never priced as a whole at one rate.
@@ -28,7 +36,7 @@ Keywords: Home Assistant, Hungary, Hungarian, MVM, MVM Next, ESZ, A1, A2, H tari
 | 2 | B Komfort | Controlled 12h/day | 2 | Reserved in catalog, not implemented |
 | 2 | B GEO | Legacy heat pump construction, special cases | 2 | Reserved in catalog, not implemented |
 
-Adding a tariff from this list is: implement a `TariffStrategy` subclass under `custom_components/hu_energy_tariffs/tariffs/`, register it — no changes to the config flow, coordinator, or entity layer. See `tariff_engine.py` and `tariffs/registry.py`.
+Adding a tariff from this list is: implement a `TariffStrategy` subclass under `custom_components/hu_energy_tariffs/tariffs/`, register it — no changes to the config flow, coordinator, or entity layer. See `tariff_engine.py`, `tariffs/registry.py`, and [docs/DESIGN.md](docs/DESIGN.md).
 
 ### Automating tariff price updates
 
@@ -81,19 +89,29 @@ source .venv/bin/activate
 pip install -r requirements-dev.txt
 ```
 
-**Unit tests** (headless — no Home Assistant boot required for the tariff-engine logic):
+**Unit tests** (headless tariff-engine tests plus Home Assistant-boot integration tests, all under `tests/unit`):
 
 ```bash
 pytest tests/unit
 ```
 
-**End-to-end smoke test** (boots a real Home Assistant container via docker-compose, requires Docker):
+**End-to-end smoke test** (boots a real Home Assistant container via docker-compose, requires Docker) — deliberately uses a separate `requirements-e2e.txt` rather than `requirements-dev.txt`, since `pytest-homeassistant-custom-component` (needed for `tests/unit`) blocks the real network calls this suite makes to the container:
 
 ```bash
+pip install -r requirements-e2e.txt
 pytest tests/e2e
 ```
 
-The tariff calculation engine (`models.py`, `tariff_engine.py`, `tariffs/`) is intentionally independent of the Home Assistant entity layer, so it can be tested in isolation.
+The tariff calculation engine (`models.py`, `tariff_engine.py`, `tariffs/`) is intentionally independent of the Home Assistant entity layer, so its tests need no Home Assistant boot at all — see [docs/DESIGN.md](docs/DESIGN.md#testing-strategy-three-layers-each-proving-something-different) for the three-layer testing strategy.
+
+### CI
+
+Every PR runs unit tests (≥80% coverage required, and no more than a 10-point drop vs. `main`), the docker-compose e2e smoke test, and CodeQL static analysis. Releases are tagged and published automatically on merge, driven by `Tag/Patch` / `Tag/Minor` / `Tag/Major` PR labels — see [docs/RELEASING.md](docs/RELEASING.md).
+
+## Documentation
+
+- [docs/DESIGN.md](docs/DESIGN.md) — the design decisions behind the object model, the tariff-engine strategy pattern, persistence, and testing approach.
+- [docs/RELEASING.md](docs/RELEASING.md) — how versioning and releases work.
 
 ## License
 

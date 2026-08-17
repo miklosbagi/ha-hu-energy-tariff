@@ -1,0 +1,33 @@
+name: E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      # Deliberately its own requirements file, not requirements-dev.txt:
+      # pytest-homeassistant-custom-component (used by tests/unit) enables
+      # pytest-socket, which blocks the real HTTP calls this suite needs
+      # to make to the docker-compose'd Home Assistant container.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-e2e.txt
+
+      # Docker + Compose v2 are preinstalled on GitHub-hosted ubuntu runners.
+      - name: Run e2e smoke test
+        run: pytest tests/e2e -v

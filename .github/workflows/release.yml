@@ -1,0 +1,81 @@
+name: Release
+
+# Tags and releases main on PR merge, driven by the merged PR's Tag/*
+# label (Tag/Major > Tag/Minor > Tag/Patch precedence if more than one
+# is somehow present; no Tag/* label at all means no tag/release - see
+# docs/RELEASING.md). This workflow only ever runs after a human merges
+# a PR; it never merges anything itself.
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+jobs:
+  tag-and-release:
+    name: tag-and-release
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version bump from PR labels
+        id: bump
+        env:
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          echo "PR labels: $LABELS_JSON"
+          HAS_MAJOR=$(echo "$LABELS_JSON" | python3 -c "import json,sys; print('Tag/Major' in json.load(sys.stdin))")
+          HAS_MINOR=$(echo "$LABELS_JSON" | python3 -c "import json,sys; print('Tag/Minor' in json.load(sys.stdin))")
+          HAS_PATCH=$(echo "$LABELS_JSON" | python3 -c "import json,sys; print('Tag/Patch' in json.load(sys.stdin))")
+
+          if [ "$HAS_MAJOR" = "True" ]; then
+            echo "level=major" >> "$GITHUB_OUTPUT"
+          elif [ "$HAS_MINOR" = "True" ]; then
+            echo "level=minor" >> "$GITHUB_OUTPUT"
+          elif [ "$HAS_PATCH" = "True" ]; then
+            echo "level=patch" >> "$GITHUB_OUTPUT"
+          else
+            echo "level=none" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute next version
+        id: version
+        if: steps.bump.outputs.level != 'none'
+        run: |
+          LATEST_TAG=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="0.0.0"
+          fi
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_TAG"
+          case "${{ steps.bump.outputs.level }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+          NEW_TAG="${MAJOR}.${MINOR}.${PATCH}"
+          echo "Previous tag: $LATEST_TAG -> New tag: $NEW_TAG"
+          echo "previous_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+          echo "tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        if: steps.bump.outputs.level != 'none'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Create GitHub release with auto-generated notes
+        if: steps.bump.outputs.level != 'none'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "${{ steps.version.outputs.tag }}" \
+            --generate-notes \
+            --notes "_Auto-generated changelog below. A maintainer/agent should edit this release afterwards to add a human-readable summary - see docs/RELEASING.md._"
