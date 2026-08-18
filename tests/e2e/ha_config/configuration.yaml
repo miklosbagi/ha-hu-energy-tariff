@@ -1,0 +1,17 @@
+# Minimal Home Assistant config for the e2e smoke-test rig only - not a
+# usable production configuration.
+default_config:
+
+template:
+  - sensor:
+      - name: "Demo grid import"
+        unique_id: demo_grid_import
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: total_increasing
+        state: "1000"
+
+logger:
+  default: warning
+  logs:
+    custom_components.hu_energy_tariffs: debug

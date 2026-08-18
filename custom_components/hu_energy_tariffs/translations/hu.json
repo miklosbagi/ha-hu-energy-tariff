@@ -1,0 +1,90 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Magyar Energia Tarifák beállítása",
+        "description": "Válaszd ki a követendő villamosenergia-mérő szenzort, és adj nevet a konfigurációnak.",
+        "data": {
+          "name": "Név",
+          "source_entity_id": "Villamosenergia-mérő"
+        }
+      },
+      "provider": {
+        "title": "Szolgáltató",
+        "data": {
+          "provider_id": "Szolgáltató"
+        }
+      },
+      "distribution_area": {
+        "title": "Elosztói terület",
+        "data": {
+          "distribution_area_id": "Elosztói terület"
+        }
+      },
+      "tariff": {
+        "title": "Tarifa",
+        "data": {
+          "tariff_plan_id": "Tarifa"
+        }
+      },
+      "tariff_params": {
+        "title": "Tarifa paraméterek",
+        "data": {
+          "quota_kwh_per_year": "Éves kedvezményes keret (kWh)",
+          "discounted_price_ft_per_kwh": "Kedvezményes ár (Ft/kWh, bruttó)",
+          "market_price_ft_per_kwh": "Piaci ár (Ft/kWh, bruttó)",
+          "fixed_monthly_fee_ft": "Fix havidíj (Ft)"
+        }
+      }
+    },
+    "error": {
+      "source_entity_not_found": "A kiválasztott entitás nem található.",
+      "source_entity_not_energy": "A kiválasztott entitás nem energia szenzor.",
+      "source_entity_not_total_increasing": "A kiválasztott entitásnak total vagy total_increasing állapotosztályúnak kell lennie."
+    }
+  },
+  "options": {
+    "step": {
+      "provider": {
+        "title": "Szolgáltató",
+        "data": {
+          "provider_id": "Szolgáltató"
+        }
+      },
+      "distribution_area": {
+        "title": "Elosztói terület",
+        "data": {
+          "distribution_area_id": "Elosztói terület"
+        }
+      },
+      "tariff": {
+        "title": "Tarifa",
+        "data": {
+          "tariff_plan_id": "Tarifa"
+        }
+      },
+      "tariff_params": {
+        "title": "Tarifa paraméterek",
+        "data": {
+          "quota_kwh_per_year": "Éves kedvezményes keret (kWh)",
+          "discounted_price_ft_per_kwh": "Kedvezményes ár (Ft/kWh, bruttó)",
+          "market_price_ft_per_kwh": "Piaci ár (Ft/kWh, bruttó)",
+          "fixed_monthly_fee_ft": "Fix havidíj (Ft)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_price": { "name": "Aktuális egységár" },
+      "total_consumption": { "name": "Teljes fogyasztás" },
+      "discounted_consumption": { "name": "Kedvezményes fogyasztás" },
+      "market_consumption": { "name": "Piaci árú fogyasztás" },
+      "discounted_quota": { "name": "Kedvezményes keret" },
+      "remaining_discounted_quota": { "name": "Hátralévő kedvezményes mennyiség" },
+      "variable_cost": { "name": "Becsült változó költség" },
+      "fixed_cost": { "name": "Fix díjak" },
+      "total_cost": { "name": "Becsült teljes költség" }
+    }
+  }
+}

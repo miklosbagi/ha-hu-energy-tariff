@@ -1,0 +1,135 @@
+name: Release
+
+# Gitea Actions equivalent of .github/workflows/release.yml - tags and
+# releases main on PR merge, driven by the merged PR's Tag/* label
+# (Tag/Major > Tag/Minor > Tag/Patch precedence; no Tag/* label means no
+# tag/release - see docs/RELEASING.md). Only ever runs after a human
+# merges a PR (merge is restricted to the repo owner by branch
+# protection); it never merges anything itself.
+#
+# Difference from the GitHub version: Gitea's release API has no
+# PR-based "generate notes" equivalent to `gh release create
+# --generate-notes`, so this generates a plain commit-log changelog
+# instead - still needs the same human/agent follow-up pass documented
+# in docs/RELEASING.md.
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  tag-and-release:
+    name: tag-and-release
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version bump from PR labels
+        id: bump
+        env:
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          echo "PR labels: $LABELS_JSON"
+          # toJson() on an empty label set evaluates to the literal
+          # string `null` (not `[]`) on at least this Gitea instance's
+          # expression engine, unlike GitHub's - guard against that.
+          # This case matters here specifically: "remove every Tag/*
+          # label" is a documented, intentional way to skip
+          # tagging/releasing (see docs/RELEASING.md), so it must
+          # resolve to level=none, not crash the workflow.
+          HAS_MAJOR=$(echo "$LABELS_JSON" | python3 -c "import json,sys; data = json.load(sys.stdin); print('Tag/Major' in (data if isinstance(data, list) else []))")
+          HAS_MINOR=$(echo "$LABELS_JSON" | python3 -c "import json,sys; data = json.load(sys.stdin); print('Tag/Minor' in (data if isinstance(data, list) else []))")
+          HAS_PATCH=$(echo "$LABELS_JSON" | python3 -c "import json,sys; data = json.load(sys.stdin); print('Tag/Patch' in (data if isinstance(data, list) else []))")
+
+          if [ "$HAS_MAJOR" = "True" ]; then
+            echo "level=major" >> "$GITHUB_OUTPUT"
+          elif [ "$HAS_MINOR" = "True" ]; then
+            echo "level=minor" >> "$GITHUB_OUTPUT"
+          elif [ "$HAS_PATCH" = "True" ]; then
+            echo "level=patch" >> "$GITHUB_OUTPUT"
+          else
+            echo "level=none" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute next version
+        id: version
+        if: steps.bump.outputs.level != 'none'
+        run: |
+          LATEST_TAG=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="0.0.0"
+          fi
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_TAG"
+          case "${{ steps.bump.outputs.level }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+          NEW_TAG="${MAJOR}.${MINOR}.${PATCH}"
+          echo "Previous tag: $LATEST_TAG -> New tag: $NEW_TAG"
+          echo "previous_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+          echo "tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog since previous tag
+        id: changelog
+        if: steps.bump.outputs.level != 'none'
+        run: |
+          PREV="${{ steps.version.outputs.previous_tag }}"
+          if git rev-parse "$PREV" >/dev/null 2>&1; then
+            LOG=$(git log "${PREV}..HEAD" --pretty=format:'- %s (%h)' --no-merges)
+          else
+            LOG=$(git log --pretty=format:'- %s (%h)' --no-merges)
+          fi
+          {
+            echo "changelog<<CHANGELOG_EOF"
+            echo "$LOG"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create tag + release via Gitea API
+        if: steps.bump.outputs.level != 'none'
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          CHANGELOG: ${{ steps.changelog.outputs.changelog }}
+          API_URL: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}/releases
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          tag = os.environ["TAG"]
+          changelog = os.environ["CHANGELOG"]
+          body = (
+              "_Changelog generated from the commit log (Gitea has no PR-based "
+              "auto-generate-notes equivalent to GitHub's) - a maintainer/agent "
+              "should still edit this release afterwards to add a human-readable "
+              "summary, see docs/RELEASING.md._\n\n" + changelog
+          )
+          payload = json.dumps(
+              {
+                  "tag_name": tag,
+                  "target_commitish": "main",
+                  "name": tag,
+                  "body": body,
+                  "draft": False,
+                  "prerelease": False,
+              }
+          ).encode()
+
+          req = urllib.request.Request(
+              os.environ["API_URL"],
+              data=payload,
+              method="POST",
+              headers={
+                  "Authorization": f"token {os.environ['GITEA_TOKEN']}",
+                  "Content-Type": "application/json",
+              },
+          )
+          with urllib.request.urlopen(req) as resp:
+              print(resp.status, resp.read().decode())
+          PY
