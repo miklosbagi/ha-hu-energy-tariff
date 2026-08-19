@@ -24,6 +24,12 @@ Auto-generated release notes are a changelog, not a summary - they list merged P
 
 `custom_components/hu_energy_tariffs/manifest.json`'s `version` field is **not** automatically kept in sync with the release tag by this workflow - bumping it would require the workflow to commit back to a protected `main` branch. Bump it manually as part of a normal PR when preparing a release, or pick it up as a documented follow-up if this becomes a recurring source of drift.
 
+## Blocking a merge: the `DO_NOT_MERGE` label
+
+Labeling a PR `DO_NOT_MERGE` actually blocks it from merging, not just a visual flag - `.github/workflows/do-not-merge.yml` is a required status check (`check-do-not-merge`, added to the `main` ruleset's `required_status_checks` rule) that fails whenever the label is present and passes otherwise. The workflow re-runs on label add/remove *and* on new commits, so it's always evaluated against the PR's current state - removing the label re-runs the check and unblocks the merge; a label added after the last push still gets caught because `opened`/`synchronize`/`reopened` also trigger it, not just `labeled`/`unlabeled`.
+
+This is the tool to reach for when a PR needs to stay open and visible (e.g. a Dependabot bump that fails CI for a reason worth tracking, or work deliberately paused mid-review) without it being mergeable by accident - a plain label alone can't stop someone from clicking merge, but a failing required check can.
+
 ## Why labels instead of, say, Conventional Commits
 
 The repo's commit history isn't currently structured enough to reliably infer patch/minor/major from commit messages (squash-merged PRs mean one commit per change, but message conventions weren't enforced from day one). A label is an explicit, visible, easily-overridden decision made once per PR - visible in review, not inferred after the fact.
