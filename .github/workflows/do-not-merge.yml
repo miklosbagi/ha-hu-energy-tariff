@@ -1,0 +1,35 @@
+name: Do Not Merge
+
+# A required status check that fails whenever the DO_NOT_MERGE label is
+# present on the PR, and passes otherwise - added to this repo's main
+# ruleset as a required check, so a labeled PR is actually blocked from
+# merging (not just visually flagged).
+#
+# Triggers on label changes (labeled/unlabeled) so toggling the label
+# re-evaluates immediately, and also on opened/synchronize/reopened so
+# every commit gets an up-to-date result - otherwise a label added
+# *before* a later push would leave the new commit's required check
+# stuck pending instead of correctly re-evaluated.
+on:
+  pull_request:
+    types: [labeled, unlabeled, opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  check-do-not-merge:
+    name: check-do-not-merge
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if DO_NOT_MERGE label is present
+        env:
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          echo "PR labels: $LABELS_JSON"
+          HAS_DO_NOT_MERGE=$(echo "$LABELS_JSON" | python3 -c "import json,sys; print('DO_NOT_MERGE' in json.load(sys.stdin))")
+          if [ "$HAS_DO_NOT_MERGE" = "True" ]; then
+            echo "::error::This PR is labeled DO_NOT_MERGE - remove the label to allow merging."
+            exit 1
+          fi
+          echo "DO_NOT_MERGE label not present - OK"
