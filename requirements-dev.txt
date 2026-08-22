@@ -1,4 +1,4 @@
 homeassistant
 pytest>=8.0
-pytest-cov>=5.0
+pytest-cov>=7.1.0
 pytest-homeassistant-custom-component
