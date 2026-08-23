@@ -1,0 +1,36 @@
+name: Label PR
+
+# Gitea Actions equivalent of .github/workflows/label-pr.yml. Uses the
+# Gitea REST API directly (curl) rather than the `gh` CLI, which has no
+# Gitea equivalent guaranteed present on the runner.
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  add-default-tag-label:
+    name: add-default-tag-label
+    runs-on: ubuntu-latest
+    steps:
+      # Every PR gets Tag/Patch by default (see docs/RELEASING.md) - the
+      # author can remove it (or swap for Tag/Minor / Tag/Major) before
+      # merge; removing every Tag/* label means the merge won't tag/release.
+      #
+      # --cacert: this runner's job containers have gitea.mb's internal
+      # CA bundle bind-mounted at /certs/ca_bundle.crt (act_runner config,
+      # agentic-home infra - originally added so git itself would trust
+      # it via GIT_SSL_CAINFO, which only covers git, not curl). Without
+      # this, curl fails with "unable to get local issuer certificate".
+      # Deliberately proper trust, not -k/--insecure - see agentic-home's
+      # memory/learned/docker.md for why that's the rejected anti-pattern
+      # for this exact recurring problem.
+      - name: Add Tag/Patch label
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          curl -sSf -X POST \
+            --cacert /certs/ca_bundle.crt \
+            -H "Authorization: token ${GITEA_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "${{ github.server_url }}/api/v1/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" \
+            -d '{"labels":["Tag/Patch"]}'

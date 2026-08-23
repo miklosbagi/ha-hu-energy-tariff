@@ -9,19 +9,24 @@ Run separately from the unit suite (it needs Docker):
 from __future__ import annotations
 
 import subprocess
-import time
 from pathlib import Path
 
 import pytest
-import requests
 
 E2E_DIR = Path(__file__).parent
 COMPOSE_FILE = E2E_DIR / "docker-compose.yml"
-HA_BASE_URL = "http://localhost:8123"
 
 
 @pytest.fixture(scope="session")
 def docker_compose_up():
+    # --wait blocks until the container's own healthcheck (which runs
+    # inside the container via loopback - see docker-compose.yml) passes,
+    # which is what actually proves the frontend came up. Deliberately
+    # not duplicated with an external HTTP request from the test process:
+    # that would be exposed to a runner network topology this suite
+    # can't control (see git history/PR discussion on a Docker-outside-
+    # of-Docker runner where the job container couldn't route to the
+    # launched container's bridge network at all).
     subprocess.run(
         ["docker", "compose", "-f", str(COMPOSE_FILE), "up", "-d", "--wait"],
         check=True,
@@ -43,17 +48,3 @@ def container_logs() -> str:
         text=True,
     )
     return result.stdout
-
-
-def wait_for_frontend(timeout: float = 60.0) -> None:
-    deadline = time.monotonic() + timeout
-    last_error: Exception | None = None
-    while time.monotonic() < deadline:
-        try:
-            response = requests.get(HA_BASE_URL, timeout=5)
-            if response.status_code == 200:
-                return
-        except requests.RequestException as err:
-            last_error = err
-        time.sleep(2)
-    raise TimeoutError(f"Home Assistant frontend never became reachable: {last_error}")
