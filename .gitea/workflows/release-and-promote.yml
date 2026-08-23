@@ -4,13 +4,16 @@ name: Release and promote to GitHub
 # docs/RELEASING.md) - the version is computed and the release is
 # created HERE, on Gitea, immediately on merge, so a version exists
 # right away for local testing without waiting on a separate GitHub
-# review pass. The same content is then promoted to GitHub with the
-# already-decided tag embedded in the PR body (`Release-Tag: X.Y.Z`);
-# GitHub's own .github/workflows/promote-release.yml reads that back
-# out verbatim rather than recomputing it - the two platforms must
-# never independently decide a version for the same change, which is
-# exactly the failure mode that happened once before under the
-# previous (GitHub-is-authority) arrangement.
+# review pass. The same tag is also pushed to GitHub immediately - but
+# a bare tag with no Release object is inert (HACS and most tooling
+# watch Releases, not tags), so nothing becomes installable there yet.
+# GitHub's own .github/workflows/promote-release.yml creates the
+# matching Release only once a human merges the promoted PR - it finds
+# the already-pushed tag by walking git history (an ancestor tag with
+# no Release yet), never by recomputing a version itself. The two
+# platforms must never independently decide a version for the same
+# change, which is exactly the failure mode that happened once before
+# under the previous (GitHub-is-authority) arrangement.
 #
 # Only ever opens a PR on GitHub - never pushes to GitHub main
 # directly and never merges anything itself. A human still reviews
@@ -145,6 +148,18 @@ jobs:
               print(resp.status, resp.read().decode())
           PY
 
+      - name: Push the release tag to GitHub too
+        if: steps.bump.outputs.level != 'none'
+        env:
+          GH_TWO_WAY_SYNC_TOKEN: ${{ secrets.GH_TWO_WAY_SYNC_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          # Inert on its own - a bare tag with no GitHub Release wrapping
+          # it doesn't make anything installable (see the header comment).
+          # promote-release.yml turns this into an actual Release once a
+          # human merges the promoted PR below.
+          git push "https://x-access-token:${GH_TWO_WAY_SYNC_TOKEN}@github.com/miklosbagi/ha-hu-energy-tariff.git" "refs/tags/${TAG}"
+
       - name: Push this merge to GitHub as a new branch
         env:
           GH_TWO_WAY_SYNC_TOKEN: ${{ secrets.GH_TWO_WAY_SYNC_TOKEN }}
@@ -188,15 +203,14 @@ jobs:
 
           footer = f"\n\n---\n_Promoted from {gitea_pr_url}._"
           if release_tag:
-              # Read back out verbatim by .github/workflows/promote-
-              # release.yml - the line format (`Release-Tag: X.Y.Z` at
-              # the start of a line) must stay in sync with that
-              # workflow's parser.
+              # Purely informational - promote-release.yml on the
+              # GitHub side finds this tag by walking git history (it
+              # was already pushed as a bare ref, see the previous
+              # step), not by reading this text.
               footer += (
-                  f"\n\nRelease-Tag: {release_tag}\n"
-                  f"_Already released as `{release_tag}` on Gitea - merging this "
-                  f"PR creates the matching release here too, pointing at this "
-                  f"repo's own merge commit._"
+                  f"\n\n_Already released as `{release_tag}` on Gitea - merging "
+                  f"this PR creates the matching release here too, pointing at "
+                  f"this repo's own merge commit._"
               )
           full_body = f"{body}{footer}" if body else footer.lstrip()
 
