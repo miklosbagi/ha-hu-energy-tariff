@@ -71,11 +71,20 @@ jobs:
           python3 - <<'PY'
           import json
           import os
+          import ssl
           import urllib.error
           import urllib.request
 
           token = os.environ["GITEA_TOKEN"]
           base = "https://gitea.mb/api/v1/repos/mikulas/ha-hu-energy-tariff"
+
+          # This Gitea instance's internal CA bundle is bind-mounted into
+          # this runner's job containers at /certs/ca_bundle.crt (see the
+          # comment in label-pr.yml for the full story) - urllib doesn't
+          # pick that up automatically the way git does via
+          # GIT_SSL_CAINFO, so build an explicit trust context from it
+          # rather than disabling verification.
+          ssl_context = ssl.create_default_context(cafile="/certs/ca_bundle.crt")
 
           def request(method, path, payload=None):
               req = urllib.request.Request(
@@ -87,7 +96,7 @@ jobs:
                       "Content-Type": "application/json",
                   },
               )
-              with urllib.request.urlopen(req) as resp:
+              with urllib.request.urlopen(req, context=ssl_context) as resp:
                   body = resp.read()
                   return json.loads(body) if body else None
 
