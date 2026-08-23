@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Set up Hungarian Energy Tariffs",
-        "description": "Select the Home Assistant energy sensor to track and give this configuration a name.",
+        "description": "Select the Home Assistant energy sensor to track and give this configuration a name. Prefer a lifetime total sensor (state class \"total\", never resets) if you have one; a daily-resetting sensor (\"total_increasing\") also works correctly.",
         "data": {
           "name": "Name",
           "source_entity_id": "Grid import energy sensor"
@@ -17,6 +17,7 @@
       },
       "distribution_area": {
         "title": "Distribution area",
+        "description": "Your bill states this directly - look for \"Elosztói engedélyes\" (distribution licensee). You can also cross-check against the [official MVM price sheet]({price_sheet_url}), which is organized by DSO area.",
         "data": {
           "distribution_area_id": "Distribution area"
         }
@@ -27,13 +28,22 @@
           "tariff_plan_id": "Tariff"
         }
       },
-      "tariff_params": {
-        "title": "Tariff parameters",
+      "tariff_energy_prices": {
+        "title": "Electricity price",
+        "description": "Villamosenergia ár - net (VAT-excluded) Ft/kWh, matching your bill's \"ESZ Lakossági 'A1' kedv./piaci ár\" lines. Verify against the [official MVM price sheet]({price_sheet_url}).",
         "data": {
           "quota_kwh_per_year": "Annual discounted quota (kWh)",
-          "discounted_price_ft_per_kwh": "Discounted price (Ft/kWh, gross)",
-          "market_price_ft_per_kwh": "Market price (Ft/kWh, gross)",
-          "fixed_monthly_fee_ft": "Fixed monthly fee (Ft)"
+          "discounted_price_ft_per_kwh": "Discounted energy price (Ft/kWh, net)",
+          "market_price_ft_per_kwh": "Market energy price (Ft/kWh, net)"
+        }
+      },
+      "tariff_network_fees": {
+        "title": "Network usage fees",
+        "description": "Rendszerhasználati díjak - matches your bill's \"Elosztói forgalmi díj\", \"Átvételi forgalmi díj\", and \"Elosztói alapdíj\" lines.",
+        "data": {
+          "distribution_charge_ft_per_kwh": "Elosztói forgalmi díj (Ft/kWh, net)",
+          "transmission_charge_ft_per_kwh": "Átvételi forgalmi díj (Ft/kWh, net)",
+          "fixed_monthly_fee_ft": "Elosztói alapdíj / fixed monthly fee (Ft, gross)"
         }
       }
     },
@@ -53,6 +63,7 @@
       },
       "distribution_area": {
         "title": "Distribution area",
+        "description": "Your bill states this directly - look for \"Elosztói engedélyes\" (distribution licensee). You can also cross-check against the [official MVM price sheet]({price_sheet_url}), which is organized by DSO area.",
         "data": {
           "distribution_area_id": "Distribution area"
         }
@@ -63,13 +74,22 @@
           "tariff_plan_id": "Tariff"
         }
       },
-      "tariff_params": {
-        "title": "Tariff parameters",
+      "tariff_energy_prices": {
+        "title": "Electricity price",
+        "description": "Villamosenergia ár - net (VAT-excluded) Ft/kWh, matching your bill's \"ESZ Lakossági 'A1' kedv./piaci ár\" lines. Verify against the [official MVM price sheet]({price_sheet_url}).",
         "data": {
           "quota_kwh_per_year": "Annual discounted quota (kWh)",
-          "discounted_price_ft_per_kwh": "Discounted price (Ft/kWh, gross)",
-          "market_price_ft_per_kwh": "Market price (Ft/kWh, gross)",
-          "fixed_monthly_fee_ft": "Fixed monthly fee (Ft)"
+          "discounted_price_ft_per_kwh": "Discounted energy price (Ft/kWh, net)",
+          "market_price_ft_per_kwh": "Market energy price (Ft/kWh, net)"
+        }
+      },
+      "tariff_network_fees": {
+        "title": "Network usage fees",
+        "description": "Rendszerhasználati díjak - matches your bill's \"Elosztói forgalmi díj\", \"Átvételi forgalmi díj\", and \"Elosztói alapdíj\" lines.",
+        "data": {
+          "distribution_charge_ft_per_kwh": "Elosztói forgalmi díj (Ft/kWh, net)",
+          "transmission_charge_ft_per_kwh": "Átvételi forgalmi díj (Ft/kWh, net)",
+          "fixed_monthly_fee_ft": "Elosztói alapdíj / fixed monthly fee (Ft, gross)"
         }
       }
     }

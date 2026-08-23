@@ -14,16 +14,18 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.hu_energy_tariff.config_flow import (
-    _area_default_discounted_price,
+    _area_default_discounted_energy_price,
     _build_pricing_period,
     _distribution_area_options,
     _provider_options,
-    _tariff_params_schema,
+    _tariff_energy_schema,
+    _tariff_network_fees_schema,
     _tariff_plan_options,
 )
 from custom_components.hu_energy_tariff.const import (
     CONF_DISCOUNTED_PRICE_FT_PER_KWH,
     CONF_DISTRIBUTION_AREA_ID,
+    CONF_DISTRIBUTION_CHARGE_FT_PER_KWH,
     CONF_FIXED_MONTHLY_FEE_FT,
     CONF_MARKET_PRICE_FT_PER_KWH,
     CONF_PRICING_PERIODS,
@@ -31,7 +33,8 @@ from custom_components.hu_energy_tariff.const import (
     CONF_QUOTA_KWH_PER_YEAR,
     CONF_SOURCE_ENTITY_ID,
     CONF_TARIFF_PLAN_ID,
-    DEFAULT_A1_DISCOUNTED_PRICE_FT_PER_KWH,
+    CONF_TRANSMISSION_CHARGE_FT_PER_KWH,
+    DEFAULT_A1_DISCOUNTED_ENERGY_PRICE_FT_PER_KWH,
     DOMAIN,
 )
 from custom_components.hu_energy_tariff.models import PriceComponents, PricingPeriod
@@ -53,16 +56,22 @@ def test_distribution_area_options_cover_known_areas():
     }
 
 
-def test_area_default_discounted_price_differs_by_area():
-    assert _area_default_discounted_price("eon") == _area_default_discounted_price("opus")
-    assert _area_default_discounted_price("elmu") != _area_default_discounted_price("eon")
+def test_area_default_discounted_energy_price_differs_by_area():
+    assert _area_default_discounted_energy_price(
+        "eon"
+    ) == _area_default_discounted_energy_price("opus")
+    assert _area_default_discounted_energy_price(
+        "elmu"
+    ) != _area_default_discounted_energy_price("eon")
 
 
-def test_area_default_discounted_price_falls_back_for_unknown_area():
-    assert _area_default_discounted_price("not_a_real_area") == (
-        DEFAULT_A1_DISCOUNTED_PRICE_FT_PER_KWH
+def test_area_default_discounted_energy_price_falls_back_for_unknown_area():
+    assert _area_default_discounted_energy_price("not_a_real_area") == (
+        DEFAULT_A1_DISCOUNTED_ENERGY_PRICE_FT_PER_KWH
     )
-    assert _area_default_discounted_price(None) == DEFAULT_A1_DISCOUNTED_PRICE_FT_PER_KWH
+    assert _area_default_discounted_energy_price(None) == (
+        DEFAULT_A1_DISCOUNTED_ENERGY_PRICE_FT_PER_KWH
+    )
 
 
 def test_tariff_plan_options_only_lists_registered_strategies():
@@ -70,12 +79,20 @@ def test_tariff_plan_options_only_lists_registered_strategies():
     assert {o["value"] for o in _tariff_plan_options()} == {"mvm_a1"}
 
 
-def test_tariff_params_schema_uses_supplied_defaults():
-    schema = _tariff_params_schema({CONF_QUOTA_KWH_PER_YEAR: 1234})
+def test_tariff_energy_schema_uses_supplied_defaults():
+    schema = _tariff_energy_schema({CONF_QUOTA_KWH_PER_YEAR: 1234})
     defaults = {
         key.schema: key.default() for key in schema.schema if hasattr(key, "default")
     }
     assert defaults[CONF_QUOTA_KWH_PER_YEAR] == 1234
+
+
+def test_tariff_network_fees_schema_uses_supplied_defaults():
+    schema = _tariff_network_fees_schema({CONF_FIXED_MONTHLY_FEE_FT: 999.0})
+    defaults = {
+        key.schema: key.default() for key in schema.schema if hasattr(key, "default")
+    }
+    assert defaults[CONF_FIXED_MONTHLY_FEE_FT] == 999.0
 
 
 def test_build_pricing_period_from_form_input():
@@ -85,14 +102,17 @@ def test_build_pricing_period_from_form_input():
         tariff_plan_id="mvm_a1",
         user_input={
             CONF_QUOTA_KWH_PER_YEAR: 2523,
-            CONF_DISCOUNTED_PRICE_FT_PER_KWH: 36.9,
-            CONF_MARKET_PRICE_FT_PER_KWH: 70.0,
-            CONF_FIXED_MONTHLY_FEE_FT: 500.0,
+            CONF_DISCOUNTED_PRICE_FT_PER_KWH: 4.39,
+            CONF_MARKET_PRICE_FT_PER_KWH: 31.8,
+            CONF_DISTRIBUTION_CHARGE_FT_PER_KWH: 23.4,
+            CONF_TRANSMISSION_CHARGE_FT_PER_KWH: 0.0,
+            CONF_FIXED_MONTHLY_FEE_FT: 153.035,
         },
     )
     assert isinstance(period, PricingPeriod)
     assert period.quota_kwh_per_year == 2523
-    assert period.price_components.energy_charge_discounted == 36.9
+    assert period.price_components.energy_charge_discounted == 4.39
+    assert period.price_components.distribution_charge == 23.4
     assert period.valid_to is None
 
 
@@ -126,20 +146,34 @@ async def test_full_config_flow_creates_entry(hass):
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"tariff_plan_id": "mvm_a1"}
     )
-    assert result["step_id"] == "tariff_params"
+    assert result["step_id"] == "tariff_energy_prices"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {
             "quota_kwh_per_year": 2523,
-            "discounted_price_ft_per_kwh": 36.9,
-            "market_price_ft_per_kwh": 70.0,
-            "fixed_monthly_fee_ft": 0.0,
+            "discounted_price_ft_per_kwh": 4.39,
+            "market_price_ft_per_kwh": 31.8,
+        },
+    )
+    assert result["step_id"] == "tariff_network_fees"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            "distribution_charge_ft_per_kwh": 23.4,
+            "transmission_charge_ft_per_kwh": 0.0,
+            "fixed_monthly_fee_ft": 153.035,
         },
     )
     assert result["type"] == "create_entry"
     assert result["title"] == "Test Home"
-    assert len(result["data"][CONF_PRICING_PERIODS]) == 1
+    periods = result["data"][CONF_PRICING_PERIODS]
+    assert len(periods) == 1
+    period = PricingPeriod.from_dict(periods[0])
+    assert period.price_components.energy_charge_discounted == 4.39
+    assert period.price_components.distribution_charge == 23.4
+    assert period.fixed_monthly_fee_ft == 153.035
 
 
 async def test_user_step_rejects_non_energy_entity(hass):
@@ -163,9 +197,11 @@ async def test_options_flow_opens_new_pricing_period_preserving_history(hass):
         distribution_area_id="eon",
         tariff_plan_id="mvm_a1",
         quota_kwh_per_year=2523,
-        fixed_monthly_fee_ft=0.0,
+        fixed_monthly_fee_ft=153.035,
         price_components=PriceComponents(
-            energy_charge_discounted=36.9, energy_charge_market=70.0
+            energy_charge_discounted=4.39,
+            energy_charge_market=31.8,
+            distribution_charge=23.4,
         ),
     )
     entry = MockConfigEntry(
@@ -191,13 +227,24 @@ async def test_options_flow_opens_new_pricing_period_preserving_history(hass):
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"tariff_plan_id": "mvm_a1"}
     )
+    assert result["step_id"] == "tariff_energy_prices"
+
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
         {
             "quota_kwh_per_year": 2523,
-            "discounted_price_ft_per_kwh": 45.0,
-            "market_price_ft_per_kwh": 80.0,
-            "fixed_monthly_fee_ft": 500.0,
+            "discounted_price_ft_per_kwh": 5.0,
+            "market_price_ft_per_kwh": 35.0,
+        },
+    )
+    assert result["step_id"] == "tariff_network_fees"
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            "distribution_charge_ft_per_kwh": 23.4,
+            "transmission_charge_ft_per_kwh": 0.0,
+            "fixed_monthly_fee_ft": 200.0,
         },
     )
     assert result["type"] == "create_entry"
@@ -206,4 +253,5 @@ async def test_options_flow_opens_new_pricing_period_preserving_history(hass):
     assert len(periods) == 2
     assert periods[0].valid_to is not None  # old period closed, not deleted
     assert periods[1].valid_to is None  # new period open-ended
-    assert periods[1].price_components.energy_charge_discounted == 45.0
+    assert periods[1].price_components.energy_charge_discounted == 5.0
+    assert periods[1].fixed_monthly_fee_ft == 200.0
