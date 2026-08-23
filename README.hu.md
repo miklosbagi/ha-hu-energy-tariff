@@ -69,14 +69,14 @@ A Home Assistant egyéni integrációknak mindegy, hogyan van telepítve maga a 
 
 Beállítások → Eszközök és szolgáltatások → Integráció hozzáadása → "Hungarian Energy Tariffs":
 
-1. Adj meg egy nevet, és válaszd ki a meglévő hálózati fogyasztásmérő szenzorodat (`device_class: energy`, `state_class: total` vagy `total_increasing` szükséges).
-2. Válassz szolgáltatót (jelenleg: MVM Next).
-3. Válassz elosztói területet (E.ON, MVM/ÉMÁSZ, OPUS, MVM Démász, ELMŰ) — ez a lépés linkeli a hivatalos MVM árlapot, ha bizonytalan vagy; a számládon is közvetlenül szerepel az "Elosztói engedélyes" sorban.
-4. Válassz tarifát (jelenleg: A1).
-5. **Villamosenergia ár** (nettó Ft/kWh) — éves kedvezményes keret, kedvezményes/piaci energiaár. A számládon szereplő "ESZ Lakossági 'A1' kedv./piaci ár" soroknak felel meg.
-6. **Rendszerhasználati díjak** — elosztói forgalmi díj, átvételi forgalmi díj (nettó Ft/kWh), és a fix havidíj (bruttó). A számládon szereplő "Elosztói forgalmi díj" / "Átvételi forgalmi díj" / "Elosztói alapdíj" soroknak felel meg.
+1. **Név, szenzor és terület** (egy képernyőn) — adj meg egy nevet, válaszd ki a meglévő hálózati fogyasztásmérő szenzorodat (`device_class: energy`, `state_class: total` vagy `total_increasing` szükséges; a teljes élettartamra vonatkozó `total` szenzor az előnyösebb, de a naponta nullázódó `total_increasing` szenzor is helyesen működik), és az elosztói területedet (E.ON, MVM/ÉMÁSZ, OPUS, MVM Démász, ELMŰ) — a számládon az "Elosztói engedélyes" sorban szerepel, vagy nézd meg az ezen a képernyőn linkelt hivatalos MVM árlapot.
+2. **Tarifa árak** (egy képernyő, két szakasz) — minden összeg Ft/HUF-ban:
+   - **Villamosenergia ár**: éves kedvezményes keret, kedvezményes/piaci energiaár (nettó Ft/kWh) — a számládon szereplő "ESZ Lakossági 'A1' kedv./piaci ár" soroknak felel meg.
+   - **Rendszerhasználati díjak**: elosztói forgalmi díj, átvételi forgalmi díj (nettó Ft/kWh), és a fix havidíj (bruttó Ft) — a számládon szereplő "Elosztói forgalmi díj" / "Átvételi forgalmi díj" / "Elosztói alapdíj" soroknak felel meg.
 
-Mindkét lépés alapértékei az MVM hivatalos árlapja alapján vannak előtöltve (a kedvezményes energiaár a 3. lépésben választott elosztói területtől függ, minden más nem) — érdemes ellenőrizni őket a tényleges számládon szereplő értékek alapján, ez egyben azt is igazolja, hogy az integráció végösszege megegyezik a ténylegesen kiszámlázott összeggel.
+(A szolgáltató- és tarifaválasztó képernyők automatikusan kimaradnak, amíg csak egy-egy lehetőség van — jelenleg MVM Next és A1 — és maguktól visszatérnek, amint egy második szolgáltató vagy tarifa is elérhető lesz.)
+
+Az árak **nettó** árak (27% ÁFA nélkül) — az ÁFA-t az integráció automatikusan hozzáadja. Az alapértékek az MVM hivatalos árlapja alapján vannak előtöltve (a kedvezményes energiaár az 1. lépésben választott elosztói területtől függ, minden más nem) — érdemes ellenőrizni őket a tényleges számládon szereplő értékek alapján, ez egyben azt is igazolja, hogy az integráció végösszege megegyezik a ténylegesen kiszámlázott összeggel.
 
 Az árakat később az integráció **Konfigurálás** (opciók) folyamatán keresztül módosíthatod — ez egy új árazási érvényességi időszakot nyit meg a régi felülírása helyett, így a már felhalmozott költség helyes marad.
 
