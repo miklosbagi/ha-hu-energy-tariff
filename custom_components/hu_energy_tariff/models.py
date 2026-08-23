@@ -132,6 +132,9 @@ class PricingPeriod:
     distribution_area_id: str
     tariff_plan_id: str
     price_components: PriceComponents
+    # Net (VAT-excluded), same as every field on price_components - the
+    # A1 strategy's fixed-fee accrual applies price_components.vat_rate
+    # to this explicitly, same rule as effective_gross_price() above.
     fixed_monthly_fee_ft: float
     quota_kwh_per_year: float | None = None
     valid_to: datetime | None = None

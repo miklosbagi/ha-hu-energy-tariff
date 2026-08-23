@@ -34,11 +34,12 @@ CONF_DISCOUNTED_PRICE_FT_PER_KWH = "discounted_price_ft_per_kwh"
 CONF_MARKET_PRICE_FT_PER_KWH = "market_price_ft_per_kwh"
 
 # Fields collected by the tariff_network_fees step - mirrors a bill's
-# "Rendszerhasználati díjak" group. transmission_charge/distribution_charge
-# are net (VAT-excl.) Ft/kWh, same rule as above; fixed_monthly_fee_ft is
-# gross (VAT-incl.) Ft/month, applied as-is with no further VAT math (see
-# tariffs/mvm_a1.py::_accrue_fixed_fee) - matches a bill's "Elosztói
-# alapdíj" line, which is already shown gross.
+# "Rendszerhasználati díjak" group. All three (transmission_charge,
+# distribution_charge, fixed_monthly_fee_ft) are net (VAT-excl.), same
+# rule as the energy fields above - tariffs/mvm_a1.py applies VAT to
+# fixed_monthly_fee_ft explicitly in _accrue_fixed_fee(), rather than
+# treating it as a silent gross exception to the "everything on this
+# screen is net" rule the UI states.
 CONF_TRANSMISSION_CHARGE_FT_PER_KWH = "transmission_charge_ft_per_kwh"
 CONF_DISTRIBUTION_CHARGE_FT_PER_KWH = "distribution_charge_ft_per_kwh"
 CONF_FIXED_MONTHLY_FEE_FT = "fixed_monthly_fee_ft"
@@ -74,20 +75,23 @@ DEFAULT_A1_DISCOUNTED_ENERGY_PRICE_FT_PER_KWH = 4.390
 # 31.800 Ft/kWh net across every DSO area in the official sheet.
 DEFAULT_A1_MARKET_ENERGY_PRICE_FT_PER_KWH = 31.800
 
-# "Elosztási és átviteli díjak" (Ft/kWh, net) - the official sheet
-# publishes this as one combined figure covering both a bill's
 # "Elosztói forgalmi díj" (distribution) and "Átvételi forgalmi díj"
-# (transmission) line items; there's no official public split between
-# the two. Defaulting the whole combined figure into distribution_charge
-# and leaving transmission_charge at 0 keeps the *total* correct out of
-# the box - override both from your bill's exact two line items if you
-# want the fields to mirror it precisely. Uniform across DSO areas.
-DEFAULT_A1_DISTRIBUTION_CHARGE_FT_PER_KWH = 23.400
-DEFAULT_A1_TRANSMISSION_CHARGE_FT_PER_KWH = 0.0
+# (transmission), Ft/kWh net - sourced from MVM Hálózat's official
+# "Az elosztók által alkalmazható rendszerhasználati díjak" table
+# (RHD_2026_01_01, effective 2026-01-01: https://mvmhalozat.hu/aram/
+# oldalak/1456), low-voltage residential ("Kisfeszültségű I."/"IV.")
+# row - cross-confirmed against a real A1 bill. Both uniform across
+# DSO areas: the transmission fee nationally (MAVIR operates the one
+# national grid), and per this table the distribution fee too, for
+# low-voltage residential specifically (unlike the raw energy price,
+# which does vary by DSO - see the per-area dict below).
+DEFAULT_A1_DISTRIBUTION_CHARGE_FT_PER_KWH = 20.010
+DEFAULT_A1_TRANSMISSION_CHARGE_FT_PER_KWH = 3.390
 
-# "Elosztói alapdíj", gross, per connection point/month - also uniform
-# across DSO areas for A1 in the official sheet.
-DEFAULT_A1_FIXED_MONTHLY_FEE_FT = 153.035
+# "Elosztói alapdíj", net, per connection point/month - same source as
+# above (1,446 Ft/connection/year / 12 = 120.5), also uniform across
+# DSO areas for A1.
+DEFAULT_A1_FIXED_MONTHLY_FEE_FT = 120.5
 
 DEFAULT_VAT_RATE = 0.27
 

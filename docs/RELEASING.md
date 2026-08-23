@@ -20,9 +20,17 @@ Versioning follows `major.minor.patch` (e.g. `1.2.3`), driven entirely by labels
 
 Auto-generated release notes are a changelog, not a summary - they list merged PRs, not what actually changed for a user. **After each automated release, a maintainer (or an agent asked to do so) should edit the release description** to add a short, human-readable "what's new" paragraph above the auto-generated list. This is intentionally not automated further: judging what's worth highlighting in a release isn't something the tagging workflow can do, and trying to heuristically extract it from commit messages tends to produce worse summaries than either the raw changelog alone or a two-minute human pass.
 
-## Manifest version
+## Manifest version - bump it in *every* PR that keeps its `Tag/*` label
 
-`custom_components/hu_energy_tariff/manifest.json`'s `version` field is **not** automatically kept in sync with the release tag by this workflow - bumping it would require the workflow to commit back to a protected `main` branch. Bump it manually as part of a normal PR when preparing a release, or pick it up as a documented follow-up if this becomes a recurring source of drift.
+`custom_components/hu_energy_tariff/manifest.json`'s `version` field is **not** automatically kept in sync with the release tag - bumping it would require the workflow to commit back to a protected `main` branch, so there's no automation for it. This has already caused real drift once (it sat frozen at `0.1.0` through eight actual releases before anyone noticed) precisely because "bump it as part of a normal PR" was easy to read past as a footnote.
+
+**The actual rule, stated plainly**: if your PR keeps a `Tag/*` label (i.e. it *will* trigger a release when merged), bump `manifest.json`'s `version` in the same PR, to whatever the resulting tag will be:
+
+- `Tag/Patch` → bump the patch number
+- `Tag/Minor` → bump the minor number, patch to `0`
+- `Tag/Major` → bump the major number, minor and patch to `0`
+
+If you removed every `Tag/*` label (no release from this PR), leave the manifest alone. If HACS-installed users need to see the version match what they installed, this is the only thing that keeps that true - skipping it is invisible short-term and confusing long-term (exactly what happened before).
 
 ## Blocking a merge: the `DO_NOT_MERGE` label
 

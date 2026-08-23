@@ -116,12 +116,12 @@ def test_flatten_pricing_input_merges_both_sections():
     flat = _flatten_pricing_input(
         {
             SECTION_ELECTRICITY_PRICE: {CONF_QUOTA_KWH_PER_YEAR: 2523},
-            SECTION_NETWORK_FEES: {CONF_FIXED_MONTHLY_FEE_FT: 153.035},
+            SECTION_NETWORK_FEES: {CONF_FIXED_MONTHLY_FEE_FT: 120.5},
         }
     )
     assert flat == {
         CONF_QUOTA_KWH_PER_YEAR: 2523,
-        CONF_FIXED_MONTHLY_FEE_FT: 153.035,
+        CONF_FIXED_MONTHLY_FEE_FT: 120.5,
     }
 
 
@@ -136,7 +136,7 @@ def test_build_pricing_period_from_form_input():
             CONF_MARKET_PRICE_FT_PER_KWH: 31.8,
             CONF_DISTRIBUTION_CHARGE_FT_PER_KWH: 23.4,
             CONF_TRANSMISSION_CHARGE_FT_PER_KWH: 0.0,
-            CONF_FIXED_MONTHLY_FEE_FT: 153.035,
+            CONF_FIXED_MONTHLY_FEE_FT: 120.5,
         },
     )
     assert isinstance(period, PricingPeriod)
@@ -181,7 +181,7 @@ async def test_full_config_flow_creates_entry(hass):
             SECTION_NETWORK_FEES: {
                 "distribution_charge_ft_per_kwh": 23.4,
                 "transmission_charge_ft_per_kwh": 0.0,
-                "fixed_monthly_fee_ft": 153.035,
+                "fixed_monthly_fee_ft": 120.5,
             },
         },
     )
@@ -195,7 +195,7 @@ async def test_full_config_flow_creates_entry(hass):
     period = PricingPeriod.from_dict(periods[0])
     assert period.price_components.energy_charge_discounted == 4.39
     assert period.price_components.distribution_charge == 23.4
-    assert period.fixed_monthly_fee_ft == 153.035
+    assert period.fixed_monthly_fee_ft == 120.5
 
 
 async def test_user_step_rejects_non_energy_entity(hass):
@@ -225,7 +225,7 @@ async def test_options_flow_opens_new_pricing_period_preserving_history(hass):
         distribution_area_id="eon",
         tariff_plan_id="mvm_a1",
         quota_kwh_per_year=2523,
-        fixed_monthly_fee_ft=153.035,
+        fixed_monthly_fee_ft=120.5,
         price_components=PriceComponents(
             energy_charge_discounted=4.39,
             energy_charge_market=31.8,

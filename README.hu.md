@@ -72,7 +72,7 @@ Beállítások → Eszközök és szolgáltatások → Integráció hozzáadása
 1. **Név, szenzor és terület** (egy képernyőn) — adj meg egy nevet, válaszd ki a meglévő hálózati fogyasztásmérő szenzorodat (`device_class: energy`, `state_class: total` vagy `total_increasing` szükséges; a teljes élettartamra vonatkozó `total` szenzor az előnyösebb, de a naponta nullázódó `total_increasing` szenzor is helyesen működik), és az elosztói területedet (E.ON, MVM/ÉMÁSZ, OPUS, MVM Démász, ELMŰ) — a számládon az "Elosztói engedélyes" sorban szerepel, vagy nézd meg az ezen a képernyőn linkelt hivatalos MVM árlapot.
 2. **Tarifa árak** (egy képernyő, két szakasz) — minden összeg Ft/HUF-ban:
    - **Villamosenergia ár**: éves kedvezményes keret, kedvezményes/piaci energiaár (nettó Ft/kWh) — a számládon szereplő "ESZ Lakossági 'A1' kedv./piaci ár" soroknak felel meg.
-   - **Rendszerhasználati díjak**: elosztói forgalmi díj, átvételi forgalmi díj (nettó Ft/kWh), és a fix havidíj (bruttó Ft) — a számládon szereplő "Elosztói forgalmi díj" / "Átvételi forgalmi díj" / "Elosztói alapdíj" soroknak felel meg.
+   - **Rendszerhasználati díjak**: elosztói forgalmi díj, átvételi forgalmi díj (nettó Ft/kWh), és a fix havidíj (nettó Ft) — a számládon szereplő "Elosztói forgalmi díj" / "Átvételi forgalmi díj" / "Elosztói alapdíj" soroknak felel meg.
 
 (A szolgáltató- és tarifaválasztó képernyők automatikusan kimaradnak, amíg csak egy-egy lehetőség van — jelenleg MVM Next és A1 — és maguktól visszatérnek, amint egy második szolgáltató vagy tarifa is elérhető lesz.)
 
