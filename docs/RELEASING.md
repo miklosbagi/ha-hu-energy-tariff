@@ -30,6 +30,10 @@ Labeling a PR `DO_NOT_MERGE` actually blocks it from merging, not just a visual 
 
 This is the tool to reach for when a PR needs to stay open and visible (e.g. a Dependabot bump that fails CI for a reason worth tracking, or work deliberately paused mid-review) without it being mergeable by accident - a plain label alone can't stop someone from clicking merge, but a failing required check can.
 
+## Mirrored to a private Gitea instance
+
+This repo is also pushed to a private, self-hosted Gitea instance as a working mirror (set up so development could continue during a GitHub outage). `.gitea/workflows/` holds Gitea Actions equivalents of everything under `.github/workflows/` - same labels, same `Tag/Patch`/`Tag/Minor`/`Tag/Major` release mechanism, same `DO_NOT_MERGE` merge-blocking check - kept as close to the GitHub versions as the two platforms' APIs allow. The one real difference: Gitea's release API has no equivalent to GitHub's PR-based `--generate-notes`, so the Gitea release workflow generates a plain commit-log changelog instead; the human/agent follow-up summary step above still applies there too.
+
 ## Why labels instead of, say, Conventional Commits
 
 The repo's commit history isn't currently structured enough to reliably infer patch/minor/major from commit messages (squash-merged PRs mean one commit per change, but message conventions weren't enforced from day one). A label is an explicit, visible, easily-overridden decision made once per PR - visible in review, not inferred after the fact.
