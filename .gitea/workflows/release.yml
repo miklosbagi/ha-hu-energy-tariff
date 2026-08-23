@@ -100,7 +100,16 @@ jobs:
           python3 - <<'PY'
           import json
           import os
+          import ssl
           import urllib.request
+
+          # gitea.mb's internal CA bundle is bind-mounted into this
+          # runner's job containers at /certs/ca_bundle.crt (see the
+          # comment in label-pr.yml for the full story) - urllib doesn't
+          # pick that up automatically the way git does via
+          # GIT_SSL_CAINFO, so build an explicit trust context from it
+          # rather than disabling verification.
+          ssl_context = ssl.create_default_context(cafile="/certs/ca_bundle.crt")
 
           tag = os.environ["TAG"]
           changelog = os.environ["CHANGELOG"]
@@ -130,6 +139,6 @@ jobs:
                   "Content-Type": "application/json",
               },
           )
-          with urllib.request.urlopen(req) as resp:
+          with urllib.request.urlopen(req, context=ssl_context) as resp:
               print(resp.status, resp.read().decode())
           PY
