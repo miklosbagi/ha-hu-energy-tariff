@@ -22,6 +22,14 @@ name: Sync from GitHub
 # commits the other lacks), this intentionally fails loud rather than
 # guessing - that needs a manual reconciliation, same as the one
 # already in this repo's git history.
+#
+# Also backfills release tags (GitHub is the sole release authority,
+# see docs/RELEASING.md, so tags only ever flow this direction) - this
+# was previously a manual one-off backfill during the reconciliation,
+# which is exactly why it silently fell behind again on every release
+# since. Tags are just refs, not a protected branch, so pushing new
+# ones directly (never force - existing tags are never moved) needs no
+# PR/human step here.
 on:
   schedule:
     - cron: "*/30 * * * *"
@@ -39,6 +47,24 @@ jobs:
 
       - name: Fetch GitHub main
         run: git fetch https://github.com/miklosbagi/ha-hu-energy-tariff.git main
+
+      - name: Backfill any tags missing from Gitea
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          GITHUB_TAGS=$(git ls-remote --tags https://github.com/miklosbagi/ha-hu-energy-tariff.git \
+            | awk '{print $2}' | grep -v '\^{}$' | sed 's#refs/tags/##')
+          GITEA_TAGS=$(git ls-remote --tags origin \
+            | awk '{print $2}' | grep -v '\^{}$' | sed 's#refs/tags/##')
+
+          for tag in $GITHUB_TAGS; do
+            if ! grep -qx "$tag" <<< "$GITEA_TAGS"; then
+              echo "Backfilling missing tag: $tag"
+              git fetch https://github.com/miklosbagi/ha-hu-energy-tariff.git "refs/tags/$tag:refs/tags/$tag"
+              git -c http.extraHeader="Authorization: token ${GITEA_TOKEN}" \
+                push origin "refs/tags/$tag"
+            fi
+          done
 
       - name: Compare, and open a fast-forward PR if GitHub is ahead
         env:
