@@ -11,7 +11,7 @@ The [spec](../README.md) is explicit that only one tariff (A1) ships first, but 
 The original ChatGPT-authored spec sketched a single flat `TariffDefinition(provider=..., valid_from=..., quota=..., prices=...)`. That's workable for A1 alone, but it conflates five things that actually vary independently in the real world:
 
 - **Provider** (`Provider`) - the universal service provider, e.g. MVM Next. A change of national energy-market structure (new entrants, provider mergers) shouldn't touch tariff logic at all.
-- **Distribution area** (`DistributionArea`) - the DSO territory (E.ON, MVM/ÉMÁSZ, OPUS, E2). Distribution-usage-charge components differ by DSO even under the same nationally-regulated tariff scheme.
+- **Distribution area** (`DistributionArea`) - the DSO territory (E.ON, MVM/ÉMÁSZ, OPUS, MVM Démász, ELMŰ). Distribution-usage-charge components differ by DSO even under the same nationally-regulated tariff scheme.
 - **Tariff plan** (`TariffPlan`) - the scheme identity (A1, A2, B Alap, ...) - pure metadata, no calculation logic. Its `strategy_key` is a level of indirection: it says *which* strategy calculates this plan, not that the plan *is* a strategy, so several plans could later share one strategy family if the regulator ever restructures the codes.
 - **Pricing period** (`PricingPeriod`) - a validity-scoped snapshot of prices/quota. Prices change over time; a site accumulates a *list* of these, never a single mutable "current price".
 - **Meter** (`Meter`) - a metering point feeding one calculation stream. Most tariffs need exactly one; B/H need two (a main meter and a separately-billed "controlled" meter).

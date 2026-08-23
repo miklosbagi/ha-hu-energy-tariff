@@ -23,6 +23,7 @@ from .const import (
     CONF_QUOTA_KWH_PER_YEAR,
     CONF_SOURCE_ENTITY_ID,
     CONF_TARIFF_PLAN_ID,
+    DEFAULT_A1_DISCOUNTED_PRICE_BY_AREA_FT_PER_KWH,
     DEFAULT_A1_DISCOUNTED_PRICE_FT_PER_KWH,
     DEFAULT_A1_FIXED_MONTHLY_FEE_FT,
     DEFAULT_A1_MARKET_PRICE_FT_PER_KWH,
@@ -52,6 +53,15 @@ def _tariff_plan_options() -> list[selector.SelectOptionDict]:
         selector.SelectOptionDict(value=p.id, label=f"{p.code} - {p.name}")
         for p in available_tariff_plans()
     ]
+
+
+def _area_default_discounted_price(distribution_area_id: str | None) -> float:
+    """A1's discounted rate genuinely differs by DSO area - look up the
+    official per-area figure, falling back to the flat default only for
+    an unrecognized/missing area id."""
+    return DEFAULT_A1_DISCOUNTED_PRICE_BY_AREA_FT_PER_KWH.get(
+        distribution_area_id, DEFAULT_A1_DISCOUNTED_PRICE_FT_PER_KWH
+    )
 
 
 def _tariff_params_schema(defaults: dict[str, Any]) -> vol.Schema:
@@ -198,8 +208,13 @@ class HuEnergyTariffsConfigFlow(ConfigFlow, domain=DOMAIN):
             self._data[CONF_PRICING_PERIODS] = [period.to_dict()]
             return self.async_create_entry(title=self._data[CONF_NAME], data=self._data)
 
+        defaults = {
+            CONF_DISCOUNTED_PRICE_FT_PER_KWH: _area_default_discounted_price(
+                self._data.get(CONF_DISTRIBUTION_AREA_ID)
+            )
+        }
         return self.async_show_form(
-            step_id="tariff_params", data_schema=_tariff_params_schema({})
+            step_id="tariff_params", data_schema=_tariff_params_schema(defaults)
         )
 
     @staticmethod
@@ -301,13 +316,18 @@ class HuEnergyTariffsOptionsFlow(OptionsFlow):
             self._data[CONF_PRICING_PERIODS] = [p.to_dict() for p in existing_periods]
             return self.async_create_entry(title="", data=self._data)
 
-        defaults: dict[str, Any] = {}
         if last_period is not None:
-            defaults = {
+            defaults: dict[str, Any] = {
                 CONF_QUOTA_KWH_PER_YEAR: last_period.quota_kwh_per_year,
                 CONF_DISCOUNTED_PRICE_FT_PER_KWH: last_period.price_components.energy_charge_discounted,
                 CONF_MARKET_PRICE_FT_PER_KWH: last_period.price_components.energy_charge_market,
                 CONF_FIXED_MONTHLY_FEE_FT: last_period.fixed_monthly_fee_ft,
+            }
+        else:
+            defaults = {
+                CONF_DISCOUNTED_PRICE_FT_PER_KWH: _area_default_discounted_price(
+                    self._data.get(CONF_DISTRIBUTION_AREA_ID)
+                )
             }
         return self.async_show_form(
             step_id="tariff_params", data_schema=_tariff_params_schema(defaults)

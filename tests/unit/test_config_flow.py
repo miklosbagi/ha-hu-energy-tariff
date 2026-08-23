@@ -14,6 +14,7 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.hu_energy_tariff.config_flow import (
+    _area_default_discounted_price,
     _build_pricing_period,
     _distribution_area_options,
     _provider_options,
@@ -30,6 +31,7 @@ from custom_components.hu_energy_tariff.const import (
     CONF_QUOTA_KWH_PER_YEAR,
     CONF_SOURCE_ENTITY_ID,
     CONF_TARIFF_PLAN_ID,
+    DEFAULT_A1_DISCOUNTED_PRICE_FT_PER_KWH,
     DOMAIN,
 )
 from custom_components.hu_energy_tariff.models import PriceComponents, PricingPeriod
@@ -47,7 +49,20 @@ def test_distribution_area_options_cover_known_areas():
         "mvm_emasz",
         "opus",
         "e2",
+        "elmu",
     }
+
+
+def test_area_default_discounted_price_differs_by_area():
+    assert _area_default_discounted_price("eon") == _area_default_discounted_price("opus")
+    assert _area_default_discounted_price("elmu") != _area_default_discounted_price("eon")
+
+
+def test_area_default_discounted_price_falls_back_for_unknown_area():
+    assert _area_default_discounted_price("not_a_real_area") == (
+        DEFAULT_A1_DISCOUNTED_PRICE_FT_PER_KWH
+    )
+    assert _area_default_discounted_price(None) == DEFAULT_A1_DISCOUNTED_PRICE_FT_PER_KWH
 
 
 def test_tariff_plan_options_only_lists_registered_strategies():
