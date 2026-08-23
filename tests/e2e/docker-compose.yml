@@ -13,7 +13,7 @@ services:
     image: homeassistant/home-assistant:2026.8.1
     volumes:
       - ./ha_config:/config
-      - ../../custom_components/hu_energy_tariffs:/config/custom_components/hu_energy_tariffs:ro
+      - ../../custom_components/hu_energy_tariff:/config/custom_components/hu_energy_tariff:ro
     ports:
       - "8123:8123"
     healthcheck:

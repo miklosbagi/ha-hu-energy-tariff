@@ -1,4 +1,4 @@
-"""Constants and static reference catalogs for hu_energy_tariffs.
+"""Constants and static reference catalogs for hu_energy_tariff.
 
 Adding a new provider or distribution area is a data change here, never
 a code change elsewhere in the integration. Tariff plans (including
@@ -12,7 +12,7 @@ from homeassistant.const import Platform
 
 from .models import DistributionArea, Provider
 
-DOMAIN = "hu_energy_tariffs"
+DOMAIN = "hu_energy_tariff"
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 

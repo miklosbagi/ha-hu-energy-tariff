@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.hu_energy_tariffs.const import (
+from custom_components.hu_energy_tariff.const import (
     CONF_DISTRIBUTION_AREA_ID,
     CONF_PRICING_PERIODS,
     CONF_PROVIDER_ID,
@@ -21,7 +21,7 @@ from custom_components.hu_energy_tariffs.const import (
     CONF_TARIFF_PLAN_ID,
     DOMAIN,
 )
-from custom_components.hu_energy_tariffs.models import PriceComponents, PricingPeriod
+from custom_components.hu_energy_tariff.models import PriceComponents, PricingPeriod
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 

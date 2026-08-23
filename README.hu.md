@@ -1,5 +1,9 @@
 🇬🇧 [English](README.md) | 🇭🇺 **Magyar**
 
+<p align="center">
+  <img src="docs/assets/logo.png" alt="Hungarian Energy Tariffs logó" width="160">
+</p>
+
 # Hungarian Energy Tariffs / Magyar Energia Tarifák
 
 [![CI](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/ci.yml/badge.svg)](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/ci.yml)
@@ -36,7 +40,7 @@ Kulcsszavak: Home Assistant, Magyarország, MVM, MVM Next, ESZ, A1, A2, H tarifa
 | 2 | B Komfort | Vezérelt, napi 12 óra | 2 | Katalógusban fenntartva, nincs megvalósítva |
 | 2 | B GEO | Korábbi hőszivattyús konstrukció, speciális esetek | 2 | Katalógusban fenntartva, nincs megvalósítva |
 
-Egy új tarifa hozzáadása ebből a listából: egy `TariffStrategy` alosztály implementálása a `custom_components/hu_energy_tariffs/tariffs/` alatt, majd regisztrálása — nincs szükség a konfigurációs folyamat, a koordinátor vagy az entitásréteg módosítására. Lásd: `tariff_engine.py`, `tariffs/registry.py`, és [docs/DESIGN.md](docs/DESIGN.md).
+Egy új tarifa hozzáadása ebből a listából: egy `TariffStrategy` alosztály implementálása a `custom_components/hu_energy_tariff/tariffs/` alatt, majd regisztrálása — nincs szükség a konfigurációs folyamat, a koordinátor vagy az entitásréteg módosítására. Lásd: `tariff_engine.py`, `tariffs/registry.py`, és [docs/DESIGN.md](docs/DESIGN.md).
 
 ### Tarifaárak automatizált frissítése
 
@@ -59,7 +63,7 @@ Figyelendő hivatalos források:
 
 ### Manuális / docker-compose
 
-A Home Assistant egyéni integrációknak mindegy, hogyan van telepítve maga a HA — másold vagy csatold kötetként (volume mount) ennek a repónak a `custom_components/hu_energy_tariffs/` könyvtárát a HA konfigurációs könyvtárad `custom_components/` mappájába (pl. abba a kötetbe, amit már most is `/config`-ként csatolsz a `docker-compose.yml`-edben), majd indítsd újra a Home Assistantot.
+A Home Assistant egyéni integrációknak mindegy, hogyan van telepítve maga a HA — másold vagy csatold kötetként (volume mount) ennek a repónak a `custom_components/hu_energy_tariff/` könyvtárát a HA konfigurációs könyvtárad `custom_components/` mappájába (pl. abba a kötetbe, amit már most is `/config`-ként csatolsz a `docker-compose.yml`-edben), majd indítsd újra a Home Assistantot.
 
 ## Konfiguráció
 

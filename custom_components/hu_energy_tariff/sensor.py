@@ -1,4 +1,4 @@
-"""Sensor entities for hu_energy_tariffs.
+"""Sensor entities for hu_energy_tariff.
 
 Every entity is a thin read of one TariffResult field off the
 coordinator - all calculation happens in tariff_engine.py/coordinator.py,

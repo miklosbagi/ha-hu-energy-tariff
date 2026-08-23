@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from custom_components.hu_energy_tariffs.models import to_kwh
+from custom_components.hu_energy_tariff.models import to_kwh
 
 
 @pytest.mark.parametrize(
