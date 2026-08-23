@@ -32,7 +32,9 @@ This is the tool to reach for when a PR needs to stay open and visible (e.g. a D
 
 ## Mirrored to a private Gitea instance
 
-This repo is also pushed to a private, self-hosted Gitea instance as a working mirror (set up so development could continue during a GitHub outage). `.gitea/workflows/` holds Gitea Actions equivalents of everything under `.github/workflows/` - same labels, same `Tag/Patch`/`Tag/Minor`/`Tag/Major` release mechanism, same `DO_NOT_MERGE` merge-blocking check - kept as close to the GitHub versions as the two platforms' APIs allow. The one real difference: Gitea's release API has no equivalent to GitHub's PR-based `--generate-notes`, so the Gitea release workflow generates a plain commit-log changelog instead; the human/agent follow-up summary step above still applies there too.
+Day-to-day development happens on a private, self-hosted Gitea instance; this GitHub repo is where a human actually merges and where the version tag/release gets minted - **GitHub is the sole release authority**. Gitea no longer runs its own `release.yml`: cutting a tag/release independently on both sides risked the two computing different version numbers for the same change (this happened once - a fix merged on GitHub while a Gitea PR for the same area was still in flight, and the two histories briefly disagreed on what `main` even contained).
+
+`.gitea/workflows/` still carries `label-pr.yml` and `do-not-merge.yml` (Gitea Actions equivalents, since Gitea PRs still get the same `Tag/*`-labeling and merge-blocking treatment during review there) - just not `release.yml`. See the repo's cross-platform sync automation (once built) for how a Gitea-side merge turns into a GitHub PR that actually triggers a release.
 
 ## Why labels instead of, say, Conventional Commits
 
