@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from datetime import date
 
-from custom_components.hu_energy_tariffs.coordinator import HuEnergyTariffsCoordinator
-from custom_components.hu_energy_tariffs.models import Meter, PersistedMeterState, TariffSiteConfig
-from custom_components.hu_energy_tariffs.tariffs.mvm_a1 import A1Strategy
+from custom_components.hu_energy_tariff.coordinator import HuEnergyTariffsCoordinator
+from custom_components.hu_energy_tariff.models import Meter, PersistedMeterState, TariffSiteConfig
+from custom_components.hu_energy_tariff.tariffs.mvm_a1 import A1Strategy
 
 
 def make_state(

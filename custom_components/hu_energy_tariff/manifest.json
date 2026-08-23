@@ -1,5 +1,5 @@
 {
-  "domain": "hu_energy_tariffs",
+  "domain": "hu_energy_tariff",
   "name": "Hungarian Energy Tariffs",
   "codeowners": ["@miklosbagi"],
   "config_flow": true,

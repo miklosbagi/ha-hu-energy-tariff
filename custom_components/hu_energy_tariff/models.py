@@ -85,11 +85,14 @@ class TariffPlan:
 class PriceComponents:
     """Component-level Ft/kWh pricing.
 
-    The A1 MVP configures `energy_charge_discounted` / `energy_charge_market`
-    as simplified all-in gross values (the other components default to 0),
-    per the spec's allowance for a simplified first implementation. The
-    shape already supports component-level pricing later without changes
-    to this class - only config_flow defaults/UI would need to grow.
+    All four Ft/kWh fields (energy_charge_discounted/market,
+    transmission_charge, distribution_charge, other_regulated_charge) are
+    NET (VAT-excluded) values - effective_gross_price() applies vat_rate
+    exactly once, to their sum. Feeding an already-gross figure into any
+    of them double-charges VAT. config_flow.py's tariff_energy_prices and
+    tariff_network_fees steps map directly onto a Hungarian bill's own
+    line items (see docs/DESIGN.md), so users can transcribe net Ft/kWh
+    figures straight off their bill without doing the VAT math themselves.
     """
 
     energy_charge_discounted: float

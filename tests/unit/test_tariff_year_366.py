@@ -5,7 +5,7 @@ from datetime import date, datetime, timezone
 
 import pytest
 
-from custom_components.hu_energy_tariffs.tariffs.mvm_a1 import _tariff_year_end_exclusive
+from custom_components.hu_energy_tariff.tariffs.mvm_a1 import _tariff_year_end_exclusive
 
 
 def test_366_day_tariff_year(strategy, a1_pricing_period):

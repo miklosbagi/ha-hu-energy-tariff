@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for hu_energy_tariffs unit tests.
+"""Shared pytest fixtures for hu_energy_tariff unit tests.
 
 None of these tests boot Home Assistant - the tariff engine and the
 coordinator's pure reset/rollover logic are exercised directly, per the
@@ -10,8 +10,8 @@ from datetime import datetime, timezone
 
 import pytest
 
-from custom_components.hu_energy_tariffs.models import Meter, MeterRole, PriceComponents, PricingPeriod
-from custom_components.hu_energy_tariffs.tariffs.mvm_a1 import A1Strategy
+from custom_components.hu_energy_tariff.models import Meter, MeterRole, PriceComponents, PricingPeriod
+from custom_components.hu_energy_tariff.tariffs.mvm_a1 import A1Strategy
 
 
 @pytest.fixture
