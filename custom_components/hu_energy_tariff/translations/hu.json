@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Magyar Energia Tarifák beállítása",
-        "description": "Válaszd ki a követendő villamosenergia-mérő szenzort, és adj nevet a konfigurációnak.",
+        "description": "Válaszd ki a követendő villamosenergia-mérő szenzort, és adj nevet a konfigurációnak. Ha van rá lehetőséged, a soha nem nullázódó, teljes élettartamra vonatkozó (\"total\" állapotosztályú) szenzort érdemes választani; a naponta nullázódó (\"total_increasing\") szenzor is helyesen működik.",
         "data": {
           "name": "Név",
           "source_entity_id": "Villamosenergia-mérő"
@@ -17,6 +17,7 @@
       },
       "distribution_area": {
         "title": "Elosztói terület",
+        "description": "Ez a számládon közvetlenül szerepel - keresd az \"Elosztói engedélyes\" sort. Összevetheted a [hivatalos MVM árlappal]({price_sheet_url}) is, amely elosztói terület szerint van csoportosítva.",
         "data": {
           "distribution_area_id": "Elosztói terület"
         }
@@ -27,13 +28,22 @@
           "tariff_plan_id": "Tarifa"
         }
       },
-      "tariff_params": {
-        "title": "Tarifa paraméterek",
+      "tariff_energy_prices": {
+        "title": "Villamosenergia ár",
+        "description": "Nettó (ÁFA nélküli) Ft/kWh árak, a számládon szereplő \"ESZ Lakossági 'A1' kedv./piaci ár\" sorokkal megegyezően. Ellenőrizd a [hivatalos MVM árlap]({price_sheet_url}) alapján.",
         "data": {
           "quota_kwh_per_year": "Éves kedvezményes keret (kWh)",
-          "discounted_price_ft_per_kwh": "Kedvezményes ár (Ft/kWh, bruttó)",
-          "market_price_ft_per_kwh": "Piaci ár (Ft/kWh, bruttó)",
-          "fixed_monthly_fee_ft": "Fix havidíj (Ft)"
+          "discounted_price_ft_per_kwh": "Kedvezményes energiaár (Ft/kWh, nettó)",
+          "market_price_ft_per_kwh": "Piaci energiaár (Ft/kWh, nettó)"
+        }
+      },
+      "tariff_network_fees": {
+        "title": "Rendszerhasználati díjak",
+        "description": "A számládon szereplő \"Elosztói forgalmi díj\", \"Átvételi forgalmi díj\" és \"Elosztói alapdíj\" soroknak felel meg.",
+        "data": {
+          "distribution_charge_ft_per_kwh": "Elosztói forgalmi díj (Ft/kWh, nettó)",
+          "transmission_charge_ft_per_kwh": "Átvételi forgalmi díj (Ft/kWh, nettó)",
+          "fixed_monthly_fee_ft": "Elosztói alapdíj / fix havidíj (Ft, bruttó)"
         }
       }
     },
@@ -53,6 +63,7 @@
       },
       "distribution_area": {
         "title": "Elosztói terület",
+        "description": "Ez a számládon közvetlenül szerepel - keresd az \"Elosztói engedélyes\" sort. Összevetheted a [hivatalos MVM árlappal]({price_sheet_url}) is, amely elosztói terület szerint van csoportosítva.",
         "data": {
           "distribution_area_id": "Elosztói terület"
         }
@@ -63,13 +74,22 @@
           "tariff_plan_id": "Tarifa"
         }
       },
-      "tariff_params": {
-        "title": "Tarifa paraméterek",
+      "tariff_energy_prices": {
+        "title": "Villamosenergia ár",
+        "description": "Nettó (ÁFA nélküli) Ft/kWh árak, a számládon szereplő \"ESZ Lakossági 'A1' kedv./piaci ár\" sorokkal megegyezően. Ellenőrizd a [hivatalos MVM árlap]({price_sheet_url}) alapján.",
         "data": {
           "quota_kwh_per_year": "Éves kedvezményes keret (kWh)",
-          "discounted_price_ft_per_kwh": "Kedvezményes ár (Ft/kWh, bruttó)",
-          "market_price_ft_per_kwh": "Piaci ár (Ft/kWh, bruttó)",
-          "fixed_monthly_fee_ft": "Fix havidíj (Ft)"
+          "discounted_price_ft_per_kwh": "Kedvezményes energiaár (Ft/kWh, nettó)",
+          "market_price_ft_per_kwh": "Piaci energiaár (Ft/kWh, nettó)"
+        }
+      },
+      "tariff_network_fees": {
+        "title": "Rendszerhasználati díjak",
+        "description": "A számládon szereplő \"Elosztói forgalmi díj\", \"Átvételi forgalmi díj\" és \"Elosztói alapdíj\" soroknak felel meg.",
+        "data": {
+          "distribution_charge_ft_per_kwh": "Elosztói forgalmi díj (Ft/kWh, nettó)",
+          "transmission_charge_ft_per_kwh": "Átvételi forgalmi díj (Ft/kWh, nettó)",
+          "fixed_monthly_fee_ft": "Elosztói alapdíj / fix havidíj (Ft, bruttó)"
         }
       }
     }

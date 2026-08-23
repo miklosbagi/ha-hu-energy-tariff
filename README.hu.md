@@ -71,9 +71,12 @@ Beállítások → Eszközök és szolgáltatások → Integráció hozzáadása
 
 1. Adj meg egy nevet, és válaszd ki a meglévő hálózati fogyasztásmérő szenzorodat (`device_class: energy`, `state_class: total` vagy `total_increasing` szükséges).
 2. Válassz szolgáltatót (jelenleg: MVM Next).
-3. Válassz elosztói területet (E.ON, MVM/ÉMÁSZ, OPUS, MVM Démász, ELMŰ).
+3. Válassz elosztói területet (E.ON, MVM/ÉMÁSZ, OPUS, MVM Démász, ELMŰ) — ez a lépés linkeli a hivatalos MVM árlapot, ha bizonytalan vagy; a számládon is közvetlenül szerepel az "Elosztói engedélyes" sorban.
 4. Válassz tarifát (jelenleg: A1).
-5. Add meg a tarifa paramétereit (éves kedvezményes keret, kedvezményes/piaci bruttó Ft/kWh árak, fix havidíj) — az alapértékek az MVM hivatalos árlapja alapján vannak előtöltve (a kedvezményes ár a 3. lépésben választott elosztói területtől függ, a piaci ár és a fix havidíj nem), de érdemes ellenőrizni őket a tényleges szerződésed/elosztói díjszabásod alapján.
+5. **Villamosenergia ár** (nettó Ft/kWh) — éves kedvezményes keret, kedvezményes/piaci energiaár. A számládon szereplő "ESZ Lakossági 'A1' kedv./piaci ár" soroknak felel meg.
+6. **Rendszerhasználati díjak** — elosztói forgalmi díj, átvételi forgalmi díj (nettó Ft/kWh), és a fix havidíj (bruttó). A számládon szereplő "Elosztói forgalmi díj" / "Átvételi forgalmi díj" / "Elosztói alapdíj" soroknak felel meg.
+
+Mindkét lépés alapértékei az MVM hivatalos árlapja alapján vannak előtöltve (a kedvezményes energiaár a 3. lépésben választott elosztói területtől függ, minden más nem) — érdemes ellenőrizni őket a tényleges számládon szereplő értékek alapján, ez egyben azt is igazolja, hogy az integráció végösszege megegyezik a ténylegesen kiszámlázott összeggel.
 
 Az árakat később az integráció **Konfigurálás** (opciók) folyamatán keresztül módosíthatod — ez egy új árazási érvényességi időszakot nyit meg a régi felülírása helyett, így a már felhalmozott költség helyes marad.
 

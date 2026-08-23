@@ -71,9 +71,12 @@ Settings → Devices & Services → Add Integration → "Hungarian Energy Tariff
 
 1. Pick a name and your existing grid-import energy sensor (must have `device_class: energy`, `state_class: total` or `total_increasing`).
 2. Pick a provider (currently: MVM Next).
-3. Pick a distribution area (E.ON, MVM/ÉMÁSZ, OPUS, MVM Démász, ELMŰ).
+3. Pick a distribution area (E.ON, MVM/ÉMÁSZ, OPUS, MVM Démász, ELMŰ) — this step links to the official MVM price sheet if you're unsure; your bill also states it directly under "Elosztói engedélyes".
 4. Pick a tariff (currently: A1).
-5. Set the tariff parameters (annual discounted quota, discounted/market gross Ft/kWh prices, fixed monthly fee) — defaults are pre-filled from MVM's official price sheet (discounted rate varies by the DSO area picked in step 3; market rate and fixed fee don't) but you should confirm them against your actual contract/DSO tariff sheet.
+5. **Electricity price** (net Ft/kWh) — annual discounted quota, discounted/market energy price. Matches your bill's "ESZ Lakossági 'A1' kedv./piaci ár" lines.
+6. **Network usage fees** — distribution charge, transmission charge (net Ft/kWh), and the fixed monthly fee (gross). Matches your bill's "Elosztói forgalmi díj" / "Átvételi forgalmi díj" / "Elosztói alapdíj" lines.
+
+Defaults for both steps are pre-filled from MVM's official price sheet (the discounted energy price varies by the DSO area picked in step 3; everything else doesn't) — confirm them against your actual bill, which also cross-checks that the integration's total lines up with what you're actually charged.
 
 Edit prices later via the integration's **Configure** (options) flow — this opens a new price validity period rather than overwriting the old one, so already-accumulated cost stays correct.
 
