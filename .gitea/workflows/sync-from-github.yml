@@ -3,18 +3,20 @@ name: Sync from GitHub
 # GitHub accepts community contributions directly (Gitea is private, so
 # external contributors can only ever reach the project through
 # GitHub) - this keeps Gitea main from silently falling behind whenever
-# that happens, by fast-forwarding it to match GitHub main. Gitea can't
-# receive inbound webhooks from GitHub (gitea.mb isn't reachable from
-# the public internet), so this polls on a schedule instead.
+# that happens, by opening a PR that fast-forwards Gitea main to match
+# GitHub main. Gitea can't receive inbound webhooks from GitHub
+# (gitea.mb isn't reachable from the public internet), so this polls
+# on a schedule instead.
 #
-# Goes through a normal PR + Gitea's fast-forward-only merge style
-# rather than pushing straight to main (main is a protected branch,
-# and this repo has no push exception for it) - but since a
-# fast-forward can never rewrite history or discard anything, it's
-# safe to have Gitea auto-complete the merge itself
-# (merge_when_checks_succeed) once required checks pass, unlike the
-# Gitea -> GitHub direction, which always needs a human
-# (promote-to-github.yml never merges anything).
+# Only ever opens (or reuses) a PR - it deliberately does not merge
+# it. A fast-forward merge would in principle be safe to automate
+# (it can never rewrite history or discard anything), but Gitea's own
+# permissions already enforce a human-must-merge rule for this repo
+# regardless (the agent-rw identity behind GITEA_TOKEN has push access
+# but not merge rights), and that's the model kept everywhere else in
+# this project too - a human always clicks merge, on both platforms.
+# So: same as the Gitea -> GitHub direction (promote-to-github.yml),
+# just going the other way.
 #
 # If the two histories have genuinely diverged (both sides have
 # commits the other lacks), this intentionally fails loud rather than
@@ -38,7 +40,7 @@ jobs:
       - name: Fetch GitHub main
         run: git fetch https://github.com/miklosbagi/ha-hu-energy-tariff.git main
 
-      - name: Compare, and open/merge a fast-forward PR if GitHub is ahead
+      - name: Compare, and open a fast-forward PR if GitHub is ahead
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
           GITEA_API_BASE: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
@@ -73,7 +75,6 @@ jobs:
           import json
           import os
           import ssl
-          import urllib.error
           import urllib.request
 
           token = os.environ["GITEA_TOKEN"]
@@ -112,8 +113,7 @@ jobs:
           ]
 
           if open_prs:
-              pr_number = open_prs[0]["number"]
-              print(f"Reusing existing sync PR #{pr_number}")
+              print(f"Sync PR #{open_prs[0]['number']} is already open - nothing more to do.")
           else:
               pr = request(
                   "POST",
@@ -123,35 +123,15 @@ jobs:
                       "head": "github-sync",
                       "base": "main",
                       "body": (
-                          "Automated - fast-forwards Gitea main to match GitHub "
-                          "main (community PRs merged there, or anything else "
-                          "that landed on GitHub outside the normal Gitea -> "
-                          "GitHub promotion flow). Merges itself automatically "
-                          "via fast-forward once required checks pass; never "
-                          "rewrites history."
+                          "Automated - opens whenever GitHub main gets ahead of "
+                          "Gitea main (a community PR merged there, or anything "
+                          "else that landed on GitHub outside the normal Gitea "
+                          "-> GitHub promotion flow). This is a pure fast-forward "
+                          "(never rewrites history or discards anything) - please "
+                          "merge using Gitea's \"Fast Forward\" merge style once "
+                          "checks pass."
                       ),
                   },
               )
-              pr_number = pr["number"]
-              print(f"Opened sync PR #{pr_number}")
-
-          try:
-              request(
-                  "POST",
-                  f"/pulls/{pr_number}/merge",
-                  {
-                      "Do": "fast-forward-only",
-                      "merge_when_checks_succeed": True,
-                      "delete_branch_after_merge": False,
-                  },
-              )
-              print(f"PR #{pr_number} merged (or queued to merge once checks pass).")
-          except urllib.error.HTTPError as exc:
-              detail = exc.read().decode()
-              if exc.code == 405:
-                  # Already merged, or merge already queued from a
-                  # previous run - not an error.
-                  print(f"Merge not applicable right now (405): {detail}")
-              else:
-                  raise SystemExit(f"Merge request failed ({exc.code}): {detail}")
+              print(f"Opened sync PR #{pr['number']}")
           PY
