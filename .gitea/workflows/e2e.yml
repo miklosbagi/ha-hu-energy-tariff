@@ -1,0 +1,40 @@
+name: E2E
+
+# Gitea Actions equivalent of .github/workflows/e2e.yml. Requires the
+# runner to have Docker available (docker compose up) - confirmed
+# working on this instance's runner.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      # An isolated venv, not the runner's ambient/shared Python
+      # environment: this runner appears to persist state across jobs
+      # (unlike GitHub's always-fresh runners), and a prior unit-tests
+      # job installing pytest-homeassistant-custom-component (which
+      # enables pytest-socket, blocking real network calls) was leaking
+      # into this job's environment and breaking its real HTTP calls to
+      # the docker-compose'd container. A fresh venv sidesteps that
+      # regardless of what else has run on this runner.
+      - name: Install dependencies
+        run: |
+          python -m venv .venv-e2e
+          .venv-e2e/bin/python -m pip install --upgrade pip
+          .venv-e2e/bin/pip install -r requirements-e2e.txt
+
+      - name: Run e2e smoke test
+        run: .venv-e2e/bin/pytest tests/e2e -v
