@@ -11,6 +11,11 @@ jobs:
   add-default-tag-label:
     name: add-default-tag-label
     runs-on: ubuntu-latest
+    # Sync PRs (GitHub -> Gitea, see .gitea/workflows/sync-from-github.yml)
+    # are pure fast-forward merges, not real work - a Tag/* label on them
+    # is meaningless noise (Gitea doesn't mint releases anymore anyway,
+    # see docs/RELEASING.md, but skip it regardless for tidiness).
+    if: ${{ github.head_ref != 'github-sync' }}
     steps:
       # Every PR gets Tag/Patch by default (see docs/RELEASING.md) - the
       # author can remove it (or swap for Tag/Minor / Tag/Major) before

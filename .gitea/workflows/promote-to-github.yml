@@ -1,0 +1,110 @@
+name: Promote to GitHub
+
+# Gitea is where day-to-day development happens; GitHub is where a
+# human actually merges and where the version tag/release gets minted
+# (see docs/RELEASING.md). This job is the bridge: on every Gitea PR
+# merge to main, it opens a matching PR on GitHub with the same
+# title/body/Tag-label - it never pushes to GitHub's main directly and
+# never merges anything itself. A human still reviews and merges on
+# GitHub like any other PR.
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  promote:
+    name: promote
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push this merge to GitHub as a new branch
+        env:
+          GH_TWO_WAY_SYNC_TOKEN: ${{ secrets.GH_TWO_WAY_SYNC_TOKEN }}
+        run: |
+          BRANCH="gitea-promote/pr-${{ github.event.pull_request.number }}"
+          echo "promote_branch=$BRANCH" >> "$GITHUB_ENV"
+          git push "https://x-access-token:${GH_TWO_WAY_SYNC_TOKEN}@github.com/miklosbagi/ha-hu-energy-tariff.git" "HEAD:refs/heads/$BRANCH"
+
+      - name: Open the GitHub PR
+        env:
+          GH_TWO_WAY_SYNC_TOKEN: ${{ secrets.GH_TWO_WAY_SYNC_TOKEN }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          GITEA_PR_URL: ${{ github.server_url }}/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          branch = os.environ["promote_branch"]
+          title = os.environ["PR_TITLE"]
+          body = os.environ["PR_BODY"] or ""
+          gitea_pr_url = os.environ["GITEA_PR_URL"]
+          token = os.environ["GH_TWO_WAY_SYNC_TOKEN"]
+
+          # toJson() on an empty label set evaluates to the literal
+          # string `null` (not `[]`) on this Gitea instance's expression
+          # engine - guard against that (see label-pr.yml/release.yml
+          # for the same pattern elsewhere in this repo).
+          raw_labels = json.loads(os.environ["LABELS_JSON"] or "null")
+          tag_labels = [
+              name
+              for name in (raw_labels if isinstance(raw_labels, list) else [])
+              if name.startswith("Tag/")
+          ]
+
+          full_body = (
+              f"{body}\n\n---\n_Promoted from {gitea_pr_url}._"
+              if body
+              else f"_Promoted from {gitea_pr_url}._"
+          )
+
+          def gh_request(method, path, payload=None):
+              req = urllib.request.Request(
+                  f"https://api.github.com/repos/miklosbagi/ha-hu-energy-tariff{path}",
+                  data=json.dumps(payload).encode() if payload is not None else None,
+                  method=method,
+                  headers={
+                      "Authorization": f"token {token}",
+                      "Content-Type": "application/json",
+                      "Accept": "application/vnd.github+json",
+                  },
+              )
+              with urllib.request.urlopen(req) as resp:
+                  return json.loads(resp.read().decode())
+
+          try:
+              pr = gh_request(
+                  "POST",
+                  "/pulls",
+                  {"title": title, "head": branch, "base": "main", "body": full_body},
+              )
+          except urllib.error.HTTPError as exc:
+              detail = exc.read().decode()
+              if exc.code == 422 and "No commits between" in detail:
+                  # Nothing to promote - GitHub main already has this
+                  # content (e.g. a prior promotion already covered it).
+                  # Not an error: the branch was pushed above but there's
+                  # simply no diff to open a PR for.
+                  print("Nothing to promote - GitHub main is already up to date.")
+                  raise SystemExit(0)
+              raise SystemExit(f"GitHub PR creation failed ({exc.code}): {detail}")
+
+          print(f"Opened {pr['html_url']}")
+
+          if tag_labels:
+              gh_request(
+                  "POST",
+                  f"/issues/{pr['number']}/labels",
+                  {"labels": tag_labels},
+              )
+              print(f"Applied labels: {tag_labels}")
+          PY
