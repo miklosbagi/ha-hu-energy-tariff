@@ -22,7 +22,7 @@ Auto-generated release notes are a changelog, not a summary - they list merged P
 
 ## Manifest version
 
-`custom_components/hu_energy_tariffs/manifest.json`'s `version` field is **not** automatically kept in sync with the release tag by this workflow - bumping it would require the workflow to commit back to a protected `main` branch. Bump it manually as part of a normal PR when preparing a release, or pick it up as a documented follow-up if this becomes a recurring source of drift.
+`custom_components/hu_energy_tariff/manifest.json`'s `version` field is **not** automatically kept in sync with the release tag by this workflow - bumping it would require the workflow to commit back to a protected `main` branch. Bump it manually as part of a normal PR when preparing a release, or pick it up as a documented follow-up if this becomes a recurring source of drift.
 
 ## Blocking a merge: the `DO_NOT_MERGE` label
 

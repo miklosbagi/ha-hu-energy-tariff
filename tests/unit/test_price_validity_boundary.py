@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from custom_components.hu_energy_tariffs.models import (
+from custom_components.hu_energy_tariff.models import (
     Meter,
     MeterRole,
     PriceComponents,
