@@ -34,7 +34,7 @@ jobs:
       - name: Run unit tests with coverage
         run: |
           pytest tests/unit -v \
-            --cov=custom_components/hu_energy_tariffs \
+            --cov=custom_components/hu_energy_tariff \
             --cov-report=term-missing \
             --cov-report=json:coverage-head.json
 
@@ -63,7 +63,7 @@ jobs:
           /tmp/base-venv/bin/pip install --upgrade pip -q
           /tmp/base-venv/bin/pip install -r requirements-dev.txt -q
           /tmp/base-venv/bin/pytest tests/unit -q \
-            --cov=custom_components/hu_energy_tariffs \
+            --cov=custom_components/hu_energy_tariff \
             --cov-report=json:/tmp/coverage-base.json
 
       - name: Enforce max 10-point coverage drop vs. base branch
