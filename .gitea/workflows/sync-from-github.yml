@@ -41,6 +41,7 @@ jobs:
       - name: Compare, and open/merge a fast-forward PR if GitHub is ahead
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          GITEA_API_BASE: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
         run: |
           GITEA_TREE=$(git rev-parse HEAD^{tree})
           GITHUB_TREE=$(git rev-parse FETCH_HEAD^{tree})
@@ -76,7 +77,7 @@ jobs:
           import urllib.request
 
           token = os.environ["GITEA_TOKEN"]
-          base = "https://gitea.mb/api/v1/repos/mikulas/ha-hu-energy-tariff"
+          base = os.environ["GITEA_API_BASE"]
 
           # This Gitea instance's internal CA bundle is bind-mounted into
           # this runner's job containers at /certs/ca_bundle.crt (see the
