@@ -71,9 +71,9 @@ Beállítások → Eszközök és szolgáltatások → Integráció hozzáadása
 
 1. Adj meg egy nevet, és válaszd ki a meglévő hálózati fogyasztásmérő szenzorodat (`device_class: energy`, `state_class: total` vagy `total_increasing` szükséges).
 2. Válassz szolgáltatót (jelenleg: MVM Next).
-3. Válassz elosztói területet (E.ON, MVM/ÉMÁSZ, OPUS, E2/Démász-Édász).
+3. Válassz elosztói területet (E.ON, MVM/ÉMÁSZ, OPUS, MVM Démász, ELMŰ).
 4. Válassz tarifát (jelenleg: A1).
-5. Add meg a tarifa paramétereit (éves kedvezményes keret, kedvezményes/piaci bruttó Ft/kWh árak, fix havidíj) — az alapértékek elő vannak töltve, de érdemes ellenőrizni őket a tényleges szerződésed/elosztói díjszabásod alapján.
+5. Add meg a tarifa paramétereit (éves kedvezményes keret, kedvezményes/piaci bruttó Ft/kWh árak, fix havidíj) — az alapértékek az MVM hivatalos árlapja alapján vannak előtöltve (a kedvezményes ár a 3. lépésben választott elosztói területtől függ, a piaci ár és a fix havidíj nem), de érdemes ellenőrizni őket a tényleges szerződésed/elosztói díjszabásod alapján.
 
 Az árakat később az integráció **Konfigurálás** (opciók) folyamatán keresztül módosíthatod — ez egy új árazási érvényességi időszakot nyit meg a régi felülírása helyett, így a már felhalmozott költség helyes marad.
 
