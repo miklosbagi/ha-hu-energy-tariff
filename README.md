@@ -1,5 +1,9 @@
 🇬🇧 **English** | 🇭🇺 [Magyar](README.hu.md)
 
+<p align="center">
+  <img src="docs/assets/logo.png" alt="Hungarian Energy Tariffs logo" width="160">
+</p>
+
 # Hungarian Energy Tariffs / Magyar Energia Tarifák
 
 [![CI](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/ci.yml/badge.svg)](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/ci.yml)
@@ -36,7 +40,7 @@ Keywords: Home Assistant, Hungary, Hungarian, MVM, MVM Next, ESZ, A1, A2, H tari
 | 2 | B Komfort | Controlled 12h/day | 2 | Reserved in catalog, not implemented |
 | 2 | B GEO | Legacy heat pump construction, special cases | 2 | Reserved in catalog, not implemented |
 
-Adding a tariff from this list is: implement a `TariffStrategy` subclass under `custom_components/hu_energy_tariffs/tariffs/`, register it — no changes to the config flow, coordinator, or entity layer. See `tariff_engine.py`, `tariffs/registry.py`, and [docs/DESIGN.md](docs/DESIGN.md).
+Adding a tariff from this list is: implement a `TariffStrategy` subclass under `custom_components/hu_energy_tariff/tariffs/`, register it — no changes to the config flow, coordinator, or entity layer. See `tariff_engine.py`, `tariffs/registry.py`, and [docs/DESIGN.md](docs/DESIGN.md).
 
 ### Automating tariff price updates
 
@@ -59,7 +63,7 @@ Official sources to track:
 
 ### Manual / docker-compose
 
-Home Assistant custom integrations don't care how HA itself is deployed — copy or volume-mount this repository's `custom_components/hu_energy_tariffs/` directory into your HA config directory's `custom_components/` folder (e.g. the volume you already mount as `/config` in your `docker-compose.yml`), then restart Home Assistant.
+Home Assistant custom integrations don't care how HA itself is deployed — copy or volume-mount this repository's `custom_components/hu_energy_tariff/` directory into your HA config directory's `custom_components/` folder (e.g. the volume you already mount as `/config` in your `docker-compose.yml`), then restart Home Assistant.
 
 ## Configuration
 

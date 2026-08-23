@@ -25,7 +25,7 @@ tests/e2e/ha_config/.cloud/
 tests/e2e/ha_config/.HA_VERSION
 tests/e2e/ha_config/.ha_run.lock
 tests/e2e/ha_config/home-assistant.log*
-tests/e2e/ha_config/*.db
+tests/e2e/ha_config/*.db*
 tests/e2e/ha_config/tts/
 tests/e2e/ha_config/deps/
 tests/e2e/ha_config/blueprints/

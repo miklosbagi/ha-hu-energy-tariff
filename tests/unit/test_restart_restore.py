@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from custom_components.hu_energy_tariffs.models import PersistedMeterState
+from custom_components.hu_energy_tariff.models import PersistedMeterState
 
 
 def test_persisted_state_round_trip():

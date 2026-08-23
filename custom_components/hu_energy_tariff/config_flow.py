@@ -1,4 +1,4 @@
-"""Config and options flow for hu_energy_tariffs."""
+"""Config and options flow for hu_energy_tariff."""
 from __future__ import annotations
 
 import dataclasses
