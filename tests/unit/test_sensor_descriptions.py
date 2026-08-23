@@ -6,8 +6,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from custom_components.hu_energy_tariffs.models import TariffResult
-from custom_components.hu_energy_tariffs.sensor import SENSOR_DESCRIPTIONS
+from custom_components.hu_energy_tariff.models import TariffResult
+from custom_components.hu_energy_tariff.sensor import SENSOR_DESCRIPTIONS
 
 EXPECTED_KEYS = {
     "current_price",

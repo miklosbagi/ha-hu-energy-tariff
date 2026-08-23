@@ -1,5 +1,9 @@
 🇬🇧 [English](README.md) | 🇭🇺 **Magyar**
 
+<p align="center">
+  <img src="docs/assets/logo.png" alt="Hungarian Energy Tariffs logó" width="160">
+</p>
+
 # Hungarian Energy Tariffs / Magyar Energia Tarifák
 
 [![CI](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/ci.yml/badge.svg)](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/ci.yml)
@@ -36,7 +40,7 @@ Kulcsszavak: Home Assistant, Magyarország, MVM, MVM Next, ESZ, A1, A2, H tarifa
 | 2 | B Komfort | Vezérelt, napi 12 óra | 2 | Katalógusban fenntartva, nincs megvalósítva |
 | 2 | B GEO | Korábbi hőszivattyús konstrukció, speciális esetek | 2 | Katalógusban fenntartva, nincs megvalósítva |
 
-Egy új tarifa hozzáadása ebből a listából: egy `TariffStrategy` alosztály implementálása a `custom_components/hu_energy_tariffs/tariffs/` alatt, majd regisztrálása — nincs szükség a konfigurációs folyamat, a koordinátor vagy az entitásréteg módosítására. Lásd: `tariff_engine.py`, `tariffs/registry.py`, és [docs/DESIGN.md](docs/DESIGN.md).
+Egy új tarifa hozzáadása ebből a listából: egy `TariffStrategy` alosztály implementálása a `custom_components/hu_energy_tariff/tariffs/` alatt, majd regisztrálása — nincs szükség a konfigurációs folyamat, a koordinátor vagy az entitásréteg módosítására. Lásd: `tariff_engine.py`, `tariffs/registry.py`, és [docs/DESIGN.md](docs/DESIGN.md).
 
 ### Tarifaárak automatizált frissítése
 
@@ -59,7 +63,7 @@ Figyelendő hivatalos források:
 
 ### Manuális / docker-compose
 
-A Home Assistant egyéni integrációknak mindegy, hogyan van telepítve maga a HA — másold vagy csatold kötetként (volume mount) ennek a repónak a `custom_components/hu_energy_tariffs/` könyvtárát a HA konfigurációs könyvtárad `custom_components/` mappájába (pl. abba a kötetbe, amit már most is `/config`-ként csatolsz a `docker-compose.yml`-edben), majd indítsd újra a Home Assistantot.
+A Home Assistant egyéni integrációknak mindegy, hogyan van telepítve maga a HA — másold vagy csatold kötetként (volume mount) ennek a repónak a `custom_components/hu_energy_tariff/` könyvtárát a HA konfigurációs könyvtárad `custom_components/` mappájába (pl. abba a kötetbe, amit már most is `/config`-ként csatolsz a `docker-compose.yml`-edben), majd indítsd újra a Home Assistantot.
 
 ## Konfiguráció
 
@@ -67,9 +71,12 @@ Beállítások → Eszközök és szolgáltatások → Integráció hozzáadása
 
 1. Adj meg egy nevet, és válaszd ki a meglévő hálózati fogyasztásmérő szenzorodat (`device_class: energy`, `state_class: total` vagy `total_increasing` szükséges).
 2. Válassz szolgáltatót (jelenleg: MVM Next).
-3. Válassz elosztói területet (E.ON, MVM/ÉMÁSZ, OPUS, E2/Démász-Édász).
+3. Válassz elosztói területet (E.ON, MVM/ÉMÁSZ, OPUS, MVM Démász, ELMŰ) — ez a lépés linkeli a hivatalos MVM árlapot, ha bizonytalan vagy; a számládon is közvetlenül szerepel az "Elosztói engedélyes" sorban.
 4. Válassz tarifát (jelenleg: A1).
-5. Add meg a tarifa paramétereit (éves kedvezményes keret, kedvezményes/piaci bruttó Ft/kWh árak, fix havidíj) — az alapértékek elő vannak töltve, de érdemes ellenőrizni őket a tényleges szerződésed/elosztói díjszabásod alapján.
+5. **Villamosenergia ár** (nettó Ft/kWh) — éves kedvezményes keret, kedvezményes/piaci energiaár. A számládon szereplő "ESZ Lakossági 'A1' kedv./piaci ár" soroknak felel meg.
+6. **Rendszerhasználati díjak** — elosztói forgalmi díj, átvételi forgalmi díj (nettó Ft/kWh), és a fix havidíj (bruttó). A számládon szereplő "Elosztói forgalmi díj" / "Átvételi forgalmi díj" / "Elosztói alapdíj" soroknak felel meg.
+
+Mindkét lépés alapértékei az MVM hivatalos árlapja alapján vannak előtöltve (a kedvezményes energiaár a 3. lépésben választott elosztói területtől függ, minden más nem) — érdemes ellenőrizni őket a tényleges számládon szereplő értékek alapján, ez egyben azt is igazolja, hogy az integráció végösszege megegyezik a ténylegesen kiszámlázott összeggel.
 
 Az árakat később az integráció **Konfigurálás** (opciók) folyamatán keresztül módosíthatod — ez egy új árazási érvényességi időszakot nyit meg a régi felülírása helyett, így a már felhalmozott költség helyes marad.
 

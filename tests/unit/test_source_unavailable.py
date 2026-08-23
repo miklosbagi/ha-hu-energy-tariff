@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from homeassistant.core import State
 
-from custom_components.hu_energy_tariffs.coordinator import HuEnergyTariffsCoordinator
+from custom_components.hu_energy_tariff.coordinator import HuEnergyTariffsCoordinator
 
 
 def test_parse_state_unavailable_returns_none():

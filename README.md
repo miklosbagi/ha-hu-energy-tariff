@@ -1,5 +1,9 @@
 🇬🇧 **English** | 🇭🇺 [Magyar](README.hu.md)
 
+<p align="center">
+  <img src="docs/assets/logo.png" alt="Hungarian Energy Tariffs logo" width="160">
+</p>
+
 # Hungarian Energy Tariffs / Magyar Energia Tarifák
 
 [![CI](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/ci.yml/badge.svg)](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/ci.yml)
@@ -36,7 +40,7 @@ Keywords: Home Assistant, Hungary, Hungarian, MVM, MVM Next, ESZ, A1, A2, H tari
 | 2 | B Komfort | Controlled 12h/day | 2 | Reserved in catalog, not implemented |
 | 2 | B GEO | Legacy heat pump construction, special cases | 2 | Reserved in catalog, not implemented |
 
-Adding a tariff from this list is: implement a `TariffStrategy` subclass under `custom_components/hu_energy_tariffs/tariffs/`, register it — no changes to the config flow, coordinator, or entity layer. See `tariff_engine.py`, `tariffs/registry.py`, and [docs/DESIGN.md](docs/DESIGN.md).
+Adding a tariff from this list is: implement a `TariffStrategy` subclass under `custom_components/hu_energy_tariff/tariffs/`, register it — no changes to the config flow, coordinator, or entity layer. See `tariff_engine.py`, `tariffs/registry.py`, and [docs/DESIGN.md](docs/DESIGN.md).
 
 ### Automating tariff price updates
 
@@ -59,7 +63,7 @@ Official sources to track:
 
 ### Manual / docker-compose
 
-Home Assistant custom integrations don't care how HA itself is deployed — copy or volume-mount this repository's `custom_components/hu_energy_tariffs/` directory into your HA config directory's `custom_components/` folder (e.g. the volume you already mount as `/config` in your `docker-compose.yml`), then restart Home Assistant.
+Home Assistant custom integrations don't care how HA itself is deployed — copy or volume-mount this repository's `custom_components/hu_energy_tariff/` directory into your HA config directory's `custom_components/` folder (e.g. the volume you already mount as `/config` in your `docker-compose.yml`), then restart Home Assistant.
 
 ## Configuration
 
@@ -67,9 +71,12 @@ Settings → Devices & Services → Add Integration → "Hungarian Energy Tariff
 
 1. Pick a name and your existing grid-import energy sensor (must have `device_class: energy`, `state_class: total` or `total_increasing`).
 2. Pick a provider (currently: MVM Next).
-3. Pick a distribution area (E.ON, MVM/ÉMÁSZ, OPUS, E2/Démász-Édász).
+3. Pick a distribution area (E.ON, MVM/ÉMÁSZ, OPUS, MVM Démász, ELMŰ) — this step links to the official MVM price sheet if you're unsure; your bill also states it directly under "Elosztói engedélyes".
 4. Pick a tariff (currently: A1).
-5. Set the tariff parameters (annual discounted quota, discounted/market gross Ft/kWh prices, fixed monthly fee) — defaults are pre-filled but you should confirm them against your actual contract/DSO tariff sheet.
+5. **Electricity price** (net Ft/kWh) — annual discounted quota, discounted/market energy price. Matches your bill's "ESZ Lakossági 'A1' kedv./piaci ár" lines.
+6. **Network usage fees** — distribution charge, transmission charge (net Ft/kWh), and the fixed monthly fee (gross). Matches your bill's "Elosztói forgalmi díj" / "Átvételi forgalmi díj" / "Elosztói alapdíj" lines.
+
+Defaults for both steps are pre-filled from MVM's official price sheet (the discounted energy price varies by the DSO area picked in step 3; everything else doesn't) — confirm them against your actual bill, which also cross-checks that the integration's total lines up with what you're actually charged.
 
 Edit prices later via the integration's **Configure** (options) flow — this opens a new price validity period rather than overwriting the old one, so already-accumulated cost stays correct.
 

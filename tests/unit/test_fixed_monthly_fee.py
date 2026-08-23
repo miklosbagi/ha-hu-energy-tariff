@@ -6,7 +6,7 @@ from datetime import date, datetime, timezone
 
 import pytest
 
-from custom_components.hu_energy_tariffs.models import PriceComponents, PricingPeriod
+from custom_components.hu_energy_tariff.models import PriceComponents, PricingPeriod
 
 from tests.unit.factories import make_state
 

@@ -22,11 +22,19 @@ Auto-generated release notes are a changelog, not a summary - they list merged P
 
 ## Manifest version
 
-`custom_components/hu_energy_tariffs/manifest.json`'s `version` field is **not** automatically kept in sync with the release tag by this workflow - bumping it would require the workflow to commit back to a protected `main` branch. Bump it manually as part of a normal PR when preparing a release, or pick it up as a documented follow-up if this becomes a recurring source of drift.
+`custom_components/hu_energy_tariff/manifest.json`'s `version` field is **not** automatically kept in sync with the release tag by this workflow - bumping it would require the workflow to commit back to a protected `main` branch. Bump it manually as part of a normal PR when preparing a release, or pick it up as a documented follow-up if this becomes a recurring source of drift.
+
+## Blocking a merge: the `DO_NOT_MERGE` label
+
+Labeling a PR `DO_NOT_MERGE` actually blocks it from merging, not just a visual flag - `.github/workflows/do-not-merge.yml` is a required status check (`check-do-not-merge`, added to the `main` ruleset's `required_status_checks` rule) that fails whenever the label is present and passes otherwise. The workflow re-runs on label add/remove *and* on new commits, so it's always evaluated against the PR's current state - removing the label re-runs the check and unblocks the merge; a label added after the last push still gets caught because `opened`/`synchronize`/`reopened` also trigger it, not just `labeled`/`unlabeled`.
+
+This is the tool to reach for when a PR needs to stay open and visible (e.g. a Dependabot bump that fails CI for a reason worth tracking, or work deliberately paused mid-review) without it being mergeable by accident - a plain label alone can't stop someone from clicking merge, but a failing required check can.
 
 ## Mirrored to a private Gitea instance
 
-This repo is also pushed to a private, self-hosted Gitea instance as a working mirror (set up so development could continue during a GitHub outage). `.gitea/workflows/` holds Gitea Actions equivalents of everything under `.github/workflows/` - same labels, same `Tag/Patch`/`Tag/Minor`/`Tag/Major` release mechanism, same `DO_NOT_MERGE` merge-blocking check - kept as close to the GitHub versions as the two platforms' APIs allow. The one real difference: Gitea's release API has no equivalent to GitHub's PR-based `--generate-notes`, so the Gitea release workflow generates a plain commit-log changelog instead; the human/agent follow-up summary step above still applies there too.
+Day-to-day development happens on a private, self-hosted Gitea instance; this GitHub repo is where a human actually merges and where the version tag/release gets minted - **GitHub is the sole release authority**. Gitea no longer runs its own `release.yml`: cutting a tag/release independently on both sides risked the two computing different version numbers for the same change (this happened once - a fix merged on GitHub while a Gitea PR for the same area was still in flight, and the two histories briefly disagreed on what `main` even contained).
+
+`.gitea/workflows/` still carries `label-pr.yml` and `do-not-merge.yml` (Gitea Actions equivalents, since Gitea PRs still get the same `Tag/*`-labeling and merge-blocking treatment during review there) - just not `release.yml`. See the repo's cross-platform sync automation (once built) for how a Gitea-side merge turns into a GitHub PR that actually triggers a release.
 
 ## Why labels instead of, say, Conventional Commits
 
