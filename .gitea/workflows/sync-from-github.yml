@@ -50,8 +50,17 @@ jobs:
             exit 0
           fi
 
+          if git merge-base --is-ancestor FETCH_HEAD HEAD; then
+            # Gitea is ahead of GitHub - completely normal (a Gitea PR
+            # merged and its promote-to-github.yml PR just hasn't been
+            # reviewed/merged yet). Nothing for THIS job to do; it'll
+            # resolve itself once that GitHub PR lands.
+            echo "Gitea main is ahead of GitHub main (pending promotion) - nothing to do here."
+            exit 0
+          fi
+
           if ! git merge-base --is-ancestor HEAD FETCH_HEAD; then
-            echo "::error::Gitea main and GitHub main have both moved independently (not a fast-forward) - needs a manual reconciliation, same as the one already in this repo's history. Refusing to guess."
+            echo "::error::Gitea main and GitHub main have both moved independently (neither is an ancestor of the other) - needs a manual reconciliation, same as the one already in this repo's history. Refusing to guess."
             exit 1
           fi
 
