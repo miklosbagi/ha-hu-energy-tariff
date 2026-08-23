@@ -50,12 +50,12 @@
             "data": {
               "distribution_charge_ft_per_kwh": "Elosztói forgalmi díj (Ft/kWh, nettó)",
               "transmission_charge_ft_per_kwh": "Átvételi forgalmi díj (Ft/kWh, nettó)",
-              "fixed_monthly_fee_ft": "Fix havidíj (Ft, bruttó)"
+              "fixed_monthly_fee_ft": "Fix havidíj (Ft, nettó)"
             },
             "data_description": {
               "distribution_charge_ft_per_kwh": "Nettó Ft/kWh - a számládon az \"Elosztói forgalmi díj\" sornak felel meg.",
               "transmission_charge_ft_per_kwh": "Nettó Ft/kWh - a számládon az \"Átvételi forgalmi díj\" sornak felel meg.",
-              "fixed_monthly_fee_ft": "Bruttó Ft/hó, ÁFA-val együtt - a számládon az \"Elosztói alapdíj\" sornak felel meg."
+              "fixed_monthly_fee_ft": "Nettó Ft/hó - a számládon az \"Elosztói alapdíj\" sornak felel meg."
             }
           }
         }
@@ -112,12 +112,12 @@
             "data": {
               "distribution_charge_ft_per_kwh": "Elosztói forgalmi díj (Ft/kWh, nettó)",
               "transmission_charge_ft_per_kwh": "Átvételi forgalmi díj (Ft/kWh, nettó)",
-              "fixed_monthly_fee_ft": "Fix havidíj (Ft, bruttó)"
+              "fixed_monthly_fee_ft": "Fix havidíj (Ft, nettó)"
             },
             "data_description": {
               "distribution_charge_ft_per_kwh": "Nettó Ft/kWh - a számládon az \"Elosztói forgalmi díj\" sornak felel meg.",
               "transmission_charge_ft_per_kwh": "Nettó Ft/kWh - a számládon az \"Átvételi forgalmi díj\" sornak felel meg.",
-              "fixed_monthly_fee_ft": "Bruttó Ft/hó, ÁFA-val együtt - a számládon az \"Elosztói alapdíj\" sornak felel meg."
+              "fixed_monthly_fee_ft": "Nettó Ft/hó - a számládon az \"Elosztói alapdíj\" sornak felel meg."
             }
           }
         }

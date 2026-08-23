@@ -50,12 +50,12 @@
             "data": {
               "distribution_charge_ft_per_kwh": "Distribution charge (Ft/kWh, net)",
               "transmission_charge_ft_per_kwh": "Transmission charge (Ft/kWh, net)",
-              "fixed_monthly_fee_ft": "Fixed monthly fee (Ft, gross)"
+              "fixed_monthly_fee_ft": "Fixed monthly fee (Ft, net)"
             },
             "data_description": {
               "distribution_charge_ft_per_kwh": "Net Ft/kWh - matches \"Elosztói forgalmi díj\" on your bill.",
               "transmission_charge_ft_per_kwh": "Net Ft/kWh - matches \"Átvételi forgalmi díj\" on your bill.",
-              "fixed_monthly_fee_ft": "Gross Ft/month, VAT already included - matches \"Elosztói alapdíj\" on your bill."
+              "fixed_monthly_fee_ft": "Net Ft/month - matches \"Elosztói alapdíj\" on your bill."
             }
           }
         }
@@ -112,12 +112,12 @@
             "data": {
               "distribution_charge_ft_per_kwh": "Distribution charge (Ft/kWh, net)",
               "transmission_charge_ft_per_kwh": "Transmission charge (Ft/kWh, net)",
-              "fixed_monthly_fee_ft": "Fixed monthly fee (Ft, gross)"
+              "fixed_monthly_fee_ft": "Fixed monthly fee (Ft, net)"
             },
             "data_description": {
               "distribution_charge_ft_per_kwh": "Net Ft/kWh - matches \"Elosztói forgalmi díj\" on your bill.",
               "transmission_charge_ft_per_kwh": "Net Ft/kWh - matches \"Átvételi forgalmi díj\" on your bill.",
-              "fixed_monthly_fee_ft": "Gross Ft/month, VAT already included - matches \"Elosztói alapdíj\" on your bill."
+              "fixed_monthly_fee_ft": "Net Ft/month - matches \"Elosztói alapdíj\" on your bill."
             }
           }
         }

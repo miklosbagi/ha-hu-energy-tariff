@@ -26,7 +26,10 @@ def _pricing_period(fixed_monthly_fee_ft: float) -> PricingPeriod:
 
 def test_fixed_fee_accrues_pro_rata_daily(strategy):
     tariff_year_start = date(2026, 3, 1)  # March has 31 days
-    pricing_period = _pricing_period(fixed_monthly_fee_ft=3100.0)  # 100 Ft/day in March
+    # fixed_monthly_fee_ft is net - 3100.0/31 = 100.0 Ft/day net, grossed
+    # up by the default 27% VAT rate to 127.0 Ft/day (see
+    # tariffs/mvm_a1.py::_accrue_fixed_fee).
+    pricing_period = _pricing_period(fixed_monthly_fee_ft=3100.0)
     state = make_state(
         tariff_year_start=tariff_year_start,
         fixed_fee_last_accrued_date=date(2026, 3, 1),
@@ -37,7 +40,7 @@ def test_fixed_fee_accrues_pro_rata_daily(strategy):
         now=now, delta_kwh=0.0, pricing_periods=(pricing_period,), state=state
     )
 
-    assert result.fixed_cost_ft == pytest.approx(500.0)
+    assert result.fixed_cost_ft == pytest.approx(635.0)
     assert new_state.fixed_fee_last_accrued_date == date(2026, 3, 6)
 
 

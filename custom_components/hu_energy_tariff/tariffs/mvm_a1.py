@@ -183,6 +183,10 @@ class A1Strategy(TariffStrategy):
         (not today's active period applied across the whole gap) - same
         reasoning as the quota proration above: a fee change must not
         retroactively apply to days before it took effect.
+
+        `fixed_monthly_fee_ft` is net (VAT-excluded), same as every other
+        price field in config_flow.py - VAT is applied here explicitly
+        rather than treating this one field as a silent gross exception.
         """
         last_accrued = state.fixed_fee_last_accrued_date or state.tariff_year_start
         accumulated = state.accumulated_fixed_cost_ft
@@ -193,6 +197,9 @@ class A1Strategy(TariffStrategy):
                 pricing_periods, datetime.combine(current_date, time.min, tzinfo=now.tzinfo)
             )
             days_in_month = _days_in_month(current_date.year, current_date.month)
-            accumulated += day_period.fixed_monthly_fee_ft / days_in_month
+            gross_monthly_fee = day_period.fixed_monthly_fee_ft * (
+                1 + day_period.price_components.vat_rate
+            )
+            accumulated += gross_monthly_fee / days_in_month
             current_date = current_date + one_day
         return accumulated, current_date

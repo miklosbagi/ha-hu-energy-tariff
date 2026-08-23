@@ -197,4 +197,5 @@ def test_fixed_fee_change_mid_gap_only_applies_from_the_change_forward(strategy)
 
     # 3 days (Mar 1-3) at 100 Ft/day under the old fee, 3 days (Mar 4-6)
     # at 200 Ft/day under the new one - not 6 days at either rate alone.
-    assert result.fixed_cost_ft == pytest.approx(3 * 100.0 + 3 * 200.0)
+    # Net day-rates grossed up by the default 27% VAT rate.
+    assert result.fixed_cost_ft == pytest.approx((3 * 100.0 + 3 * 200.0) * 1.27)

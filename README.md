@@ -72,7 +72,7 @@ Settings → Devices & Services → Add Integration → "Hungarian Energy Tariff
 1. **Name, sensor, and area** (one screen) — pick a name, your existing grid-import energy sensor (must have `device_class: energy`, `state_class: total` or `total_increasing`; a lifetime `total` sensor is preferred, but a daily-resetting `total_increasing` sensor also works correctly), and your distribution area (E.ON, MVM/ÉMÁSZ, OPUS, MVM Démász, ELMŰ) — stated on your bill under "Elosztói engedélyes", or check the official MVM price sheet linked on this screen.
 2. **Tariff prices** (one screen, two sections) — all amounts in Ft/HUF:
    - **Electricity price**: annual discounted quota, discounted/market energy price (net Ft/kWh) — matches your bill's "ESZ Lakossági 'A1' kedv./piaci ár" lines.
-   - **Network usage fees**: distribution charge, transmission charge (net Ft/kWh), and the fixed monthly fee (gross Ft) — matches your bill's "Elosztói forgalmi díj" / "Átvételi forgalmi díj" / "Elosztói alapdíj" lines.
+   - **Network usage fees**: distribution charge, transmission charge (net Ft/kWh), and the fixed monthly fee (net Ft) — matches your bill's "Elosztói forgalmi díj" / "Átvételi forgalmi díj" / "Elosztói alapdíj" lines.
 
 (Provider and tariff-plan pickers are skipped automatically while there's only one of each — MVM Next and A1 today; they reappear on their own once a second provider or tariff is added.)
 
