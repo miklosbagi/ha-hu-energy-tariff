@@ -69,14 +69,14 @@ Home Assistant custom integrations don't care how HA itself is deployed — copy
 
 Settings → Devices & Services → Add Integration → "Hungarian Energy Tariffs":
 
-1. Pick a name and your existing grid-import energy sensor (must have `device_class: energy`, `state_class: total` or `total_increasing`).
-2. Pick a provider (currently: MVM Next).
-3. Pick a distribution area (E.ON, MVM/ÉMÁSZ, OPUS, MVM Démász, ELMŰ) — this step links to the official MVM price sheet if you're unsure; your bill also states it directly under "Elosztói engedélyes".
-4. Pick a tariff (currently: A1).
-5. **Electricity price** (net Ft/kWh) — annual discounted quota, discounted/market energy price. Matches your bill's "ESZ Lakossági 'A1' kedv./piaci ár" lines.
-6. **Network usage fees** — distribution charge, transmission charge (net Ft/kWh), and the fixed monthly fee (gross). Matches your bill's "Elosztói forgalmi díj" / "Átvételi forgalmi díj" / "Elosztói alapdíj" lines.
+1. **Name, sensor, and area** (one screen) — pick a name, your existing grid-import energy sensor (must have `device_class: energy`, `state_class: total` or `total_increasing`; a lifetime `total` sensor is preferred, but a daily-resetting `total_increasing` sensor also works correctly), and your distribution area (E.ON, MVM/ÉMÁSZ, OPUS, MVM Démász, ELMŰ) — stated on your bill under "Elosztói engedélyes", or check the official MVM price sheet linked on this screen.
+2. **Tariff prices** (one screen, two sections) — all amounts in Ft/HUF:
+   - **Electricity price**: annual discounted quota, discounted/market energy price (net Ft/kWh) — matches your bill's "ESZ Lakossági 'A1' kedv./piaci ár" lines.
+   - **Network usage fees**: distribution charge, transmission charge (net Ft/kWh), and the fixed monthly fee (gross Ft) — matches your bill's "Elosztói forgalmi díj" / "Átvételi forgalmi díj" / "Elosztói alapdíj" lines.
 
-Defaults for both steps are pre-filled from MVM's official price sheet (the discounted energy price varies by the DSO area picked in step 3; everything else doesn't) — confirm them against your actual bill, which also cross-checks that the integration's total lines up with what you're actually charged.
+(Provider and tariff-plan pickers are skipped automatically while there's only one of each — MVM Next and A1 today; they reappear on their own once a second provider or tariff is added.)
+
+Prices are **net** (excluding 27% VAT/ÁFA) — the integration adds VAT automatically. Defaults are pre-filled from MVM's official price sheet (the discounted energy price varies by the distribution area picked in step 1; everything else doesn't) — confirm them against your actual bill, which also cross-checks that the integration's total lines up with what you're actually charged.
 
 Edit prices later via the integration's **Configure** (options) flow — this opens a new price validity period rather than overwriting the old one, so already-accumulated cost stays correct.
 
