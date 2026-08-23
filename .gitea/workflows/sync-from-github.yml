@@ -1,0 +1,138 @@
+name: Sync from GitHub
+
+# GitHub accepts community contributions directly (Gitea is private, so
+# external contributors can only ever reach the project through
+# GitHub) - this keeps Gitea main from silently falling behind whenever
+# that happens, by fast-forwarding it to match GitHub main. Gitea can't
+# receive inbound webhooks from GitHub (gitea.mb isn't reachable from
+# the public internet), so this polls on a schedule instead.
+#
+# Goes through a normal PR + Gitea's fast-forward-only merge style
+# rather than pushing straight to main (main is a protected branch,
+# and this repo has no push exception for it) - but since a
+# fast-forward can never rewrite history or discard anything, it's
+# safe to have Gitea auto-complete the merge itself
+# (merge_when_checks_succeed) once required checks pass, unlike the
+# Gitea -> GitHub direction, which always needs a human
+# (promote-to-github.yml never merges anything).
+#
+# If the two histories have genuinely diverged (both sides have
+# commits the other lacks), this intentionally fails loud rather than
+# guessing - that needs a manual reconciliation, same as the one
+# already in this repo's git history.
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch GitHub main
+        run: git fetch https://github.com/miklosbagi/ha-hu-energy-tariff.git main
+
+      - name: Compare, and open/merge a fast-forward PR if GitHub is ahead
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          GITEA_TREE=$(git rev-parse HEAD^{tree})
+          GITHUB_TREE=$(git rev-parse FETCH_HEAD^{tree})
+
+          if [ "$GITEA_TREE" = "$GITHUB_TREE" ]; then
+            echo "Already in sync (identical content) - nothing to do."
+            exit 0
+          fi
+
+          if ! git merge-base --is-ancestor HEAD FETCH_HEAD; then
+            echo "::error::Gitea main and GitHub main have both moved independently (not a fast-forward) - needs a manual reconciliation, same as the one already in this repo's history. Refusing to guess."
+            exit 1
+          fi
+
+          echo "GitHub main is ahead - pushing the sync branch."
+          git -c http.extraHeader="Authorization: token ${GITEA_TOKEN}" \
+            push --force origin FETCH_HEAD:refs/heads/github-sync
+
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          token = os.environ["GITEA_TOKEN"]
+          base = "https://gitea.mb/api/v1/repos/mikulas/ha-hu-energy-tariff"
+
+          def request(method, path, payload=None):
+              req = urllib.request.Request(
+                  f"{base}{path}",
+                  data=json.dumps(payload).encode() if payload is not None else None,
+                  method=method,
+                  headers={
+                      "Authorization": f"token {token}",
+                      "Content-Type": "application/json",
+                  },
+              )
+              with urllib.request.urlopen(req) as resp:
+                  body = resp.read()
+                  return json.loads(body) if body else None
+
+          existing = request(
+              "GET", "/pulls?state=open&type=all&head=github-sync"
+          )
+          # Gitea's `head` filter behavior varies by version - filter
+          # defensively rather than trust it did the filtering.
+          open_prs = [
+              pr for pr in (existing or [])
+              if pr["head"]["ref"] == "github-sync" and pr["base"]["ref"] == "main"
+          ]
+
+          if open_prs:
+              pr_number = open_prs[0]["number"]
+              print(f"Reusing existing sync PR #{pr_number}")
+          else:
+              pr = request(
+                  "POST",
+                  "/pulls",
+                  {
+                      "title": "Sync from GitHub",
+                      "head": "github-sync",
+                      "base": "main",
+                      "body": (
+                          "Automated - fast-forwards Gitea main to match GitHub "
+                          "main (community PRs merged there, or anything else "
+                          "that landed on GitHub outside the normal Gitea -> "
+                          "GitHub promotion flow). Merges itself automatically "
+                          "via fast-forward once required checks pass; never "
+                          "rewrites history."
+                      ),
+                  },
+              )
+              pr_number = pr["number"]
+              print(f"Opened sync PR #{pr_number}")
+
+          try:
+              request(
+                  "POST",
+                  f"/pulls/{pr_number}/merge",
+                  {
+                      "Do": "fast-forward-only",
+                      "merge_when_checks_succeed": True,
+                      "delete_branch_after_merge": False,
+                  },
+              )
+              print(f"PR #{pr_number} merged (or queued to merge once checks pass).")
+          except urllib.error.HTTPError as exc:
+              detail = exc.read().decode()
+              if exc.code == 405:
+                  # Already merged, or merge already queued from a
+                  # previous run - not an error.
+                  print(f"Merge not applicable right now (405): {detail}")
+              else:
+                  raise SystemExit(f"Merge request failed ({exc.code}): {detail}")
+          PY

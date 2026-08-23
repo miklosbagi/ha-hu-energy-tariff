@@ -11,6 +11,11 @@ jobs:
   add-default-tag-label:
     name: add-default-tag-label
     runs-on: ubuntu-latest
+    # Promotion PRs (Gitea -> GitHub, see .gitea/workflows/promote-to-
+    # github.yml) already arrive with the correct Tag/* label copied
+    # from their originating Gitea PR - skip the default-Tag/Patch add
+    # here so it doesn't end up sitting alongside a different label.
+    if: ${{ !startsWith(github.head_ref, 'gitea-promote/') }}
     steps:
       # Every PR gets Tag/Patch by default (see docs/RELEASING.md) - the
       # author can remove it (or swap for Tag/Minor / Tag/Major) before
