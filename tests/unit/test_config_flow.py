@@ -4,7 +4,7 @@ The pure helper tests need no Home Assistant boot. The flow walk-through
 tests use pytest-homeassistant-custom-component's lightweight test `hass`
 fixture to drive the real config_flow.py/options flow end to end,
 including the price-history-preserving PricingPeriod behaviour on
-reconfigure.
+reconfigure and the provider/tariff auto-skip logic.
 """
 from __future__ import annotations
 
@@ -14,12 +14,15 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.hu_energy_tariff.config_flow import (
+    SECTION_ELECTRICITY_PRICE,
+    SECTION_NETWORK_FEES,
     _area_default_discounted_energy_price,
     _build_pricing_period,
     _distribution_area_options,
+    _flatten_pricing_input,
+    _only_option_id,
+    _pricing_schema,
     _provider_options,
-    _tariff_energy_schema,
-    _tariff_network_fees_schema,
     _tariff_plan_options,
 )
 from custom_components.hu_energy_tariff.const import (
@@ -79,20 +82,47 @@ def test_tariff_plan_options_only_lists_registered_strategies():
     assert {o["value"] for o in _tariff_plan_options()} == {"mvm_a1"}
 
 
-def test_tariff_energy_schema_uses_supplied_defaults():
-    schema = _tariff_energy_schema({CONF_QUOTA_KWH_PER_YEAR: 1234})
-    defaults = {
-        key.schema: key.default() for key in schema.schema if hasattr(key, "default")
-    }
-    assert defaults[CONF_QUOTA_KWH_PER_YEAR] == 1234
+def test_only_option_id_returns_none_for_multiple_options():
+    assert _only_option_id(_distribution_area_options()) is None
 
 
-def test_tariff_network_fees_schema_uses_supplied_defaults():
-    schema = _tariff_network_fees_schema({CONF_FIXED_MONTHLY_FEE_FT: 999.0})
-    defaults = {
-        key.schema: key.default() for key in schema.schema if hasattr(key, "default")
+def test_only_option_id_returns_the_single_value():
+    assert _only_option_id(_provider_options()) == "mvm_next"
+    assert _only_option_id(_tariff_plan_options()) == "mvm_a1"
+
+
+def test_pricing_schema_uses_supplied_defaults():
+    schema = _pricing_schema(
+        {
+            SECTION_ELECTRICITY_PRICE: {CONF_QUOTA_KWH_PER_YEAR: 1234},
+            SECTION_NETWORK_FEES: {CONF_FIXED_MONTHLY_FEE_FT: 999.0},
+        }
+    )
+    # Defaults live inside each section's own nested schema, not on the
+    # outer section key (which has no default of its own).
+    energy_section = schema.schema[SECTION_ELECTRICITY_PRICE]
+    fees_section = schema.schema[SECTION_NETWORK_FEES]
+    energy_defaults = {
+        key.schema: key.default() for key in energy_section.schema.schema if hasattr(key, "default")
     }
-    assert defaults[CONF_FIXED_MONTHLY_FEE_FT] == 999.0
+    fees_defaults = {
+        key.schema: key.default() for key in fees_section.schema.schema if hasattr(key, "default")
+    }
+    assert energy_defaults[CONF_QUOTA_KWH_PER_YEAR] == 1234
+    assert fees_defaults[CONF_FIXED_MONTHLY_FEE_FT] == 999.0
+
+
+def test_flatten_pricing_input_merges_both_sections():
+    flat = _flatten_pricing_input(
+        {
+            SECTION_ELECTRICITY_PRICE: {CONF_QUOTA_KWH_PER_YEAR: 2523},
+            SECTION_NETWORK_FEES: {CONF_FIXED_MONTHLY_FEE_FT: 153.035},
+        }
+    )
+    assert flat == {
+        CONF_QUOTA_KWH_PER_YEAR: 2523,
+        CONF_FIXED_MONTHLY_FEE_FT: 153.035,
+    }
 
 
 def test_build_pricing_period_from_form_input():
@@ -117,6 +147,9 @@ def test_build_pricing_period_from_form_input():
 
 
 async def test_full_config_flow_creates_entry(hass):
+    """Provider and tariff steps are auto-skipped (single option each) -
+    the flow goes straight from `user` (name/sensor/area, all one screen)
+    to `pricing` (one screen, two sections)."""
     hass.states.async_set(
         "sensor.test_energy",
         "100.0",
@@ -129,45 +162,34 @@ async def test_full_config_flow_creates_entry(hass):
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        {"name": "Test Home", "source_entity_id": "sensor.test_energy"},
-    )
-    assert result["step_id"] == "provider"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {"provider_id": "mvm_next"}
-    )
-    assert result["step_id"] == "distribution_area"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {"distribution_area_id": "eon"}
-    )
-    assert result["step_id"] == "tariff"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {"tariff_plan_id": "mvm_a1"}
-    )
-    assert result["step_id"] == "tariff_energy_prices"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
         {
-            "quota_kwh_per_year": 2523,
-            "discounted_price_ft_per_kwh": 4.39,
-            "market_price_ft_per_kwh": 31.8,
+            "name": "Test Home",
+            "source_entity_id": "sensor.test_energy",
+            "distribution_area_id": "eon",
         },
     )
-    assert result["step_id"] == "tariff_network_fees"
+    assert result["step_id"] == "pricing"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {
-            "distribution_charge_ft_per_kwh": 23.4,
-            "transmission_charge_ft_per_kwh": 0.0,
-            "fixed_monthly_fee_ft": 153.035,
+            SECTION_ELECTRICITY_PRICE: {
+                "quota_kwh_per_year": 2523,
+                "discounted_price_ft_per_kwh": 4.39,
+                "market_price_ft_per_kwh": 31.8,
+            },
+            SECTION_NETWORK_FEES: {
+                "distribution_charge_ft_per_kwh": 23.4,
+                "transmission_charge_ft_per_kwh": 0.0,
+                "fixed_monthly_fee_ft": 153.035,
+            },
         },
     )
     assert result["type"] == "create_entry"
     assert result["title"] == "Test Home"
+    assert result["data"][CONF_PROVIDER_ID] == "mvm_next"
+    assert result["data"][CONF_TARIFF_PLAN_ID] == "mvm_a1"
+    assert result["data"][CONF_DISTRIBUTION_AREA_ID] == "eon"
     periods = result["data"][CONF_PRICING_PERIODS]
     assert len(periods) == 1
     period = PricingPeriod.from_dict(periods[0])
@@ -183,13 +205,19 @@ async def test_user_step_rejects_non_energy_entity(hass):
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        {"name": "Test Home", "source_entity_id": "sensor.not_energy"},
+        {
+            "name": "Test Home",
+            "source_entity_id": "sensor.not_energy",
+            "distribution_area_id": "eon",
+        },
     )
     assert result["step_id"] == "user"
     assert result["errors"]["base"] == "source_entity_not_energy"
 
 
 async def test_options_flow_opens_new_pricing_period_preserving_history(hass):
+    """Options flow starts at distribution_area (provider/tariff are
+    auto-skipped), then goes straight to the combined pricing step."""
     original_period = PricingPeriod(
         valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
         valid_to=None,
@@ -218,33 +246,26 @@ async def test_options_flow_opens_new_pricing_period_preserving_history(hass):
     entry.add_to_hass(hass)
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"provider_id": "mvm_next"}
-    )
+    assert result["step_id"] == "distribution_area"
+
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"distribution_area_id": "eon"}
     )
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"tariff_plan_id": "mvm_a1"}
-    )
-    assert result["step_id"] == "tariff_energy_prices"
+    assert result["step_id"] == "pricing"
 
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
         {
-            "quota_kwh_per_year": 2523,
-            "discounted_price_ft_per_kwh": 5.0,
-            "market_price_ft_per_kwh": 35.0,
-        },
-    )
-    assert result["step_id"] == "tariff_network_fees"
-
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"],
-        {
-            "distribution_charge_ft_per_kwh": 23.4,
-            "transmission_charge_ft_per_kwh": 0.0,
-            "fixed_monthly_fee_ft": 200.0,
+            SECTION_ELECTRICITY_PRICE: {
+                "quota_kwh_per_year": 2523,
+                "discounted_price_ft_per_kwh": 5.0,
+                "market_price_ft_per_kwh": 35.0,
+            },
+            SECTION_NETWORK_FEES: {
+                "distribution_charge_ft_per_kwh": 23.4,
+                "transmission_charge_ft_per_kwh": 0.0,
+                "fixed_monthly_fee_ft": 200.0,
+            },
         },
     )
     assert result["type"] == "create_entry"
