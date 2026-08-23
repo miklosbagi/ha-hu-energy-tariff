@@ -1,0 +1,243 @@
+name: Release and promote to GitHub
+
+# Gitea is the sole authority for deciding version numbers (see
+# docs/RELEASING.md) - the version is computed and the release is
+# created HERE, on Gitea, immediately on merge, so a version exists
+# right away for local testing without waiting on a separate GitHub
+# review pass. The same content is then promoted to GitHub with the
+# already-decided tag embedded in the PR body (`Release-Tag: X.Y.Z`);
+# GitHub's own .github/workflows/promote-release.yml reads that back
+# out verbatim rather than recomputing it - the two platforms must
+# never independently decide a version for the same change, which is
+# exactly the failure mode that happened once before under the
+# previous (GitHub-is-authority) arrangement.
+#
+# Only ever opens a PR on GitHub - never pushes to GitHub main
+# directly and never merges anything itself. A human still reviews
+# and merges there, same as any other GitHub PR.
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  release-and-promote:
+    name: release-and-promote
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version bump from PR labels
+        id: bump
+        env:
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          echo "PR labels: $LABELS_JSON"
+          # toJson() on an empty label set evaluates to the literal
+          # string `null` (not `[]`) on at least this Gitea instance's
+          # expression engine, unlike GitHub's - guard against that.
+          # This case matters here specifically: "remove every Tag/*
+          # label" is a documented, intentional way to skip
+          # tagging/releasing (see docs/RELEASING.md), so it must
+          # resolve to level=none, not crash the workflow.
+          HAS_MAJOR=$(echo "$LABELS_JSON" | python3 -c "import json,sys; data = json.load(sys.stdin); print('Tag/Major' in (data if isinstance(data, list) else []))")
+          HAS_MINOR=$(echo "$LABELS_JSON" | python3 -c "import json,sys; data = json.load(sys.stdin); print('Tag/Minor' in (data if isinstance(data, list) else []))")
+          HAS_PATCH=$(echo "$LABELS_JSON" | python3 -c "import json,sys; data = json.load(sys.stdin); print('Tag/Patch' in (data if isinstance(data, list) else []))")
+
+          if [ "$HAS_MAJOR" = "True" ]; then
+            echo "level=major" >> "$GITHUB_OUTPUT"
+          elif [ "$HAS_MINOR" = "True" ]; then
+            echo "level=minor" >> "$GITHUB_OUTPUT"
+          elif [ "$HAS_PATCH" = "True" ]; then
+            echo "level=patch" >> "$GITHUB_OUTPUT"
+          else
+            echo "level=none" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute next version
+        id: version
+        if: steps.bump.outputs.level != 'none'
+        run: |
+          LATEST_TAG=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="0.0.0"
+          fi
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_TAG"
+          case "${{ steps.bump.outputs.level }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+          NEW_TAG="${MAJOR}.${MINOR}.${PATCH}"
+          echo "Previous tag: $LATEST_TAG -> New tag: $NEW_TAG"
+          echo "previous_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+          echo "tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog since previous tag
+        id: changelog
+        if: steps.bump.outputs.level != 'none'
+        run: |
+          PREV="${{ steps.version.outputs.previous_tag }}"
+          if git rev-parse "$PREV" >/dev/null 2>&1; then
+            LOG=$(git log "${PREV}..HEAD" --pretty=format:'- %s (%h)' --no-merges)
+          else
+            LOG=$(git log --pretty=format:'- %s (%h)' --no-merges)
+          fi
+          {
+            echo "changelog<<CHANGELOG_EOF"
+            echo "$LOG"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create tag + release on Gitea
+        if: steps.bump.outputs.level != 'none'
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          CHANGELOG: ${{ steps.changelog.outputs.changelog }}
+          API_URL: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}/releases
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import ssl
+          import urllib.request
+
+          # This Gitea instance's internal CA bundle is bind-mounted
+          # into this runner's job containers at /certs/ca_bundle.crt
+          # (see the comment in label-pr.yml for the full story) -
+          # urllib doesn't pick that up automatically the way git does
+          # via GIT_SSL_CAINFO, so build an explicit trust context
+          # from it rather than disabling verification.
+          ssl_context = ssl.create_default_context(cafile="/certs/ca_bundle.crt")
+
+          tag = os.environ["TAG"]
+          changelog = os.environ["CHANGELOG"]
+          body = (
+              "_Changelog generated from the commit log - a maintainer/agent "
+              "should still edit this release afterwards to add a human-readable "
+              "summary, see docs/RELEASING.md._\n\n" + changelog
+          )
+          payload = json.dumps(
+              {
+                  "tag_name": tag,
+                  "target_commitish": "main",
+                  "name": tag,
+                  "body": body,
+                  "draft": False,
+                  "prerelease": False,
+              }
+          ).encode()
+
+          req = urllib.request.Request(
+              os.environ["API_URL"],
+              data=payload,
+              method="POST",
+              headers={
+                  "Authorization": f"token {os.environ['GITEA_TOKEN']}",
+                  "Content-Type": "application/json",
+              },
+          )
+          with urllib.request.urlopen(req, context=ssl_context) as resp:
+              print(resp.status, resp.read().decode())
+          PY
+
+      - name: Push this merge to GitHub as a new branch
+        env:
+          GH_TWO_WAY_SYNC_TOKEN: ${{ secrets.GH_TWO_WAY_SYNC_TOKEN }}
+        run: |
+          BRANCH="gitea-promote/pr-${{ github.event.pull_request.number }}"
+          echo "promote_branch=$BRANCH" >> "$GITHUB_ENV"
+          git push "https://x-access-token:${GH_TWO_WAY_SYNC_TOKEN}@github.com/miklosbagi/ha-hu-energy-tariff.git" "HEAD:refs/heads/$BRANCH"
+
+      - name: Open the GitHub PR
+        env:
+          GH_TWO_WAY_SYNC_TOKEN: ${{ secrets.GH_TWO_WAY_SYNC_TOKEN }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          GITEA_PR_URL: ${{ github.server_url }}/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          branch = os.environ["promote_branch"]
+          title = os.environ["PR_TITLE"]
+          body = os.environ["PR_BODY"] or ""
+          gitea_pr_url = os.environ["GITEA_PR_URL"]
+          token = os.environ["GH_TWO_WAY_SYNC_TOKEN"]
+          release_tag = os.environ.get("RELEASE_TAG", "")
+
+          # toJson() on an empty label set evaluates to the literal
+          # string `null` (not `[]`) on this Gitea instance's expression
+          # engine - guard against that (see label-pr.yml for the same
+          # pattern elsewhere in this repo).
+          raw_labels = json.loads(os.environ["LABELS_JSON"] or "null")
+          tag_labels = [
+              name
+              for name in (raw_labels if isinstance(raw_labels, list) else [])
+              if name.startswith("Tag/")
+          ]
+
+          footer = f"\n\n---\n_Promoted from {gitea_pr_url}._"
+          if release_tag:
+              # Read back out verbatim by .github/workflows/promote-
+              # release.yml - the line format (`Release-Tag: X.Y.Z` at
+              # the start of a line) must stay in sync with that
+              # workflow's parser.
+              footer += (
+                  f"\n\nRelease-Tag: {release_tag}\n"
+                  f"_Already released as `{release_tag}` on Gitea - merging this "
+                  f"PR creates the matching release here too, pointing at this "
+                  f"repo's own merge commit._"
+              )
+          full_body = f"{body}{footer}" if body else footer.lstrip()
+
+          def gh_request(method, path, payload=None):
+              req = urllib.request.Request(
+                  f"https://api.github.com/repos/miklosbagi/ha-hu-energy-tariff{path}",
+                  data=json.dumps(payload).encode() if payload is not None else None,
+                  method=method,
+                  headers={
+                      "Authorization": f"token {token}",
+                      "Content-Type": "application/json",
+                      "Accept": "application/vnd.github+json",
+                  },
+              )
+              with urllib.request.urlopen(req) as resp:
+                  return json.loads(resp.read().decode())
+
+          try:
+              pr = gh_request(
+                  "POST",
+                  "/pulls",
+                  {"title": title, "head": branch, "base": "main", "body": full_body},
+              )
+          except urllib.error.HTTPError as exc:
+              detail = exc.read().decode()
+              if exc.code == 422 and "No commits between" in detail:
+                  # Nothing to promote - GitHub main already has this
+                  # content (e.g. a prior promotion already covered it).
+                  # Not an error: the branch was pushed above but there's
+                  # simply no diff to open a PR for.
+                  print("Nothing to promote - GitHub main is already up to date.")
+                  raise SystemExit(0)
+              raise SystemExit(f"GitHub PR creation failed ({exc.code}): {detail}")
+
+          print(f"Opened {pr['html_url']}")
+
+          if tag_labels:
+              gh_request(
+                  "POST",
+                  f"/issues/{pr['number']}/labels",
+                  {"labels": tag_labels},
+              )
+              print(f"Applied labels: {tag_labels}")
+          PY

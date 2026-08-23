@@ -15,7 +15,7 @@ name: Sync from GitHub
 # regardless (the agent-rw identity behind GITEA_TOKEN has push access
 # but not merge rights), and that's the model kept everywhere else in
 # this project too - a human always clicks merge, on both platforms.
-# So: same as the Gitea -> GitHub direction (promote-to-github.yml),
+# So: same as the Gitea -> GitHub direction (release-and-promote.yml),
 # just going the other way.
 #
 # If the two histories have genuinely diverged (both sides have
@@ -23,13 +23,24 @@ name: Sync from GitHub
 # guessing - that needs a manual reconciliation, same as the one
 # already in this repo's git history.
 #
-# Also backfills release tags (GitHub is the sole release authority,
-# see docs/RELEASING.md, so tags only ever flow this direction) - this
-# was previously a manual one-off backfill during the reconciliation,
-# which is exactly why it silently fell behind again on every release
-# since. Tags are just refs, not a protected branch, so pushing new
-# ones directly (never force - existing tags are never moved) needs no
-# PR/human step here.
+# The ancestor check alone isn't quite enough: every time a promotion
+# PR gets merged on GitHub with anything other than a literal
+# fast-forward (e.g. GitHub's "Create a merge commit" button, which
+# mints a brand new commit even when a fast-forward is possible), the
+# resulting GitHub tip is content-identical to an earlier point in
+# Gitea's own history but not its literal git ancestor anymore -
+# tripping the "genuinely diverged" branch on pure content Gitea
+# already had. So this also checks whether GitHub's current tree
+# already appears somewhere in Gitea's own history before concluding
+# there's a real divergence.
+#
+# Does NOT touch tags - Gitea is the sole release authority (see
+# docs/RELEASING.md), so tags only ever flow Gitea -> GitHub now
+# (handled by release-and-promote.yml / .github/workflows/promote-
+# release.yml), never the other way. A plain community PR merged
+# directly on GitHub has no Gitea-decided tag to backfill anyway -
+# its content just flows into Gitea via this job like anything else,
+# and gets released from there whenever a maintainer next does so.
 on:
   schedule:
     - cron: "*/30 * * * *"
@@ -48,24 +59,6 @@ jobs:
       - name: Fetch GitHub main
         run: git fetch https://github.com/miklosbagi/ha-hu-energy-tariff.git main
 
-      - name: Backfill any tags missing from Gitea
-        env:
-          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
-        run: |
-          GITHUB_TAGS=$(git ls-remote --tags https://github.com/miklosbagi/ha-hu-energy-tariff.git \
-            | awk '{print $2}' | grep -v '\^{}$' | sed 's#refs/tags/##')
-          GITEA_TAGS=$(git ls-remote --tags origin \
-            | awk '{print $2}' | grep -v '\^{}$' | sed 's#refs/tags/##')
-
-          for tag in $GITHUB_TAGS; do
-            if ! grep -qx "$tag" <<< "$GITEA_TAGS"; then
-              echo "Backfilling missing tag: $tag"
-              git fetch https://github.com/miklosbagi/ha-hu-energy-tariff.git "refs/tags/$tag:refs/tags/$tag"
-              git -c http.extraHeader="Authorization: token ${GITEA_TOKEN}" \
-                push origin "refs/tags/$tag"
-            fi
-          done
-
       - name: Compare, and open a fast-forward PR if GitHub is ahead
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
@@ -79,11 +72,20 @@ jobs:
             exit 0
           fi
 
+          if git log --format=%T HEAD | grep -qx "$GITHUB_TREE"; then
+            # GitHub's current content already exists somewhere in
+            # Gitea's own history, just reached via a different commit
+            # shape (a non-fast-forward promotion merge on GitHub) -
+            # Gitea already has this, nothing to do.
+            echo "GitHub's content already exists in Gitea's history (reached via a differently-shaped merge on GitHub) - nothing to do."
+            exit 0
+          fi
+
           if git merge-base --is-ancestor FETCH_HEAD HEAD; then
             # Gitea is ahead of GitHub - completely normal (a Gitea PR
-            # merged and its promote-to-github.yml PR just hasn't been
-            # reviewed/merged yet). Nothing for THIS job to do; it'll
-            # resolve itself once that GitHub PR lands.
+            # merged and its release-and-promote.yml PR just hasn't
+            # been reviewed/merged yet). Nothing for THIS job to do;
+            # it'll resolve itself once that GitHub PR lands.
             echo "Gitea main is ahead of GitHub main (pending promotion) - nothing to do here."
             exit 0
           fi

@@ -1,0 +1,81 @@
+name: Promote release from Gitea
+
+# Gitea is the sole authority for deciding version numbers (see
+# docs/RELEASING.md) - a Gitea PR merge already computed the tag and
+# created the release there, embedding it in the promoted PR's body
+# as `Release-Tag: X.Y.Z` (see .gitea/workflows/release-and-
+# promote.yml). This reads that tag back out and creates the matching
+# tag + GitHub Release here, pointing at this repo's own merge commit
+# - it never computes its own version number, which is exactly what
+# avoids the two platforms disagreeing (this happened once, under the
+# previous GitHub-is-authority arrangement - see docs/RELEASING.md).
+#
+# Only fires for promotion PRs (gitea-promote/* branches, matching the
+# naming release-and-promote.yml uses). A plain community PR merged
+# directly here doesn't get an immediate release - its content flows
+# into Gitea via .gitea/workflows/sync-from-github.yml like any other
+# change, and gets released from there whenever a maintainer next does
+# so.
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+jobs:
+  promote-release:
+    name: promote-release
+    if: >
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' &&
+      startsWith(github.event.pull_request.head.ref, 'gitea-promote/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract the release tag decided on Gitea
+        id: tag
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          TAG=$(printf '%s' "$PR_BODY" | grep -oP '(?<=^Release-Tag: )\S+' | head -n1 || true)
+          if [ -z "$TAG" ]; then
+            echo "No Release-Tag found in the PR body - this PR didn't carry a Tag/* label on Gitea (or removed all of them), nothing to release."
+          else
+            echo "Found release tag: $TAG"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog since previous tag
+        id: changelog
+        if: steps.tag.outputs.tag != ''
+        run: |
+          PREV_TAG=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          if [ -n "$PREV_TAG" ] && git rev-parse "$PREV_TAG" >/dev/null 2>&1; then
+            LOG=$(git log "${PREV_TAG}..HEAD" --pretty=format:'- %s (%h)' --no-merges)
+          else
+            LOG=$(git log --pretty=format:'- %s (%h)' --no-merges)
+          fi
+          {
+            echo "changelog<<CHANGELOG_EOF"
+            echo "$LOG"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create matching tag + GitHub release
+        if: steps.tag.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          CHANGELOG: ${{ steps.changelog.outputs.changelog }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+          NOTES="_Version decided on Gitea, promoted here after merge - see docs/RELEASING.md._"$'\n\n'"$CHANGELOG"
+          gh release create "$TAG" --title "$TAG" --notes "$NOTES"
