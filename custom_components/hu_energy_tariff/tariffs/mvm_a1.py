@@ -12,7 +12,13 @@ from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta
 
-from ..models import PersistedMeterState, PricingPeriod, TariffPlan, TariffResult, select_pricing_period
+from ..models import (
+    PersistedMeterState,
+    PricingPeriod,
+    TariffPlan,
+    TariffResult,
+    select_pricing_period,
+)
 from ..tariff_engine import TariffStrategy
 from .registry import register, register_tariff_plan
 
@@ -45,10 +51,7 @@ def _tariff_year_end_exclusive(start: date) -> date:
 
 
 def _days_in_month(year: int, month: int) -> int:
-    if month == 12:
-        next_month = date(year + 1, 1, 1)
-    else:
-        next_month = date(year, month + 1, 1)
+    next_month = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
     return (next_month - date(year, month, 1)).days
 
 

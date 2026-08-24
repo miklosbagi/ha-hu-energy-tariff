@@ -6,7 +6,6 @@ from __future__ import annotations
 from datetime import date
 
 from custom_components.hu_energy_tariff.models import PersistedMeterState, TariffSiteConfig
-
 from tests.unit.factories import make_bare_coordinator
 
 

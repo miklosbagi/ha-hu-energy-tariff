@@ -1,7 +1,7 @@
 """365-day tariff year: the Aug-Jul window doesn't include a Feb 29."""
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -13,6 +13,6 @@ def test_365_day_tariff_year(strategy, a1_pricing_period):
     end_exclusive = _tariff_year_end_exclusive(start)
     assert (end_exclusive - start).days == 365
 
-    last_day = datetime(2026, 7, 31, 23, 59, tzinfo=timezone.utc)
+    last_day = datetime(2026, 7, 31, 23, 59, tzinfo=UTC)
     eligible = strategy._eligible_quota_kwh(last_day, (a1_pricing_period,), start)  # noqa: SLF001
     assert eligible == pytest.approx(a1_pricing_period.quota_kwh_per_year, rel=1e-6)

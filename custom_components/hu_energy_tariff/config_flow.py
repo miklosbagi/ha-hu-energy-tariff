@@ -4,14 +4,13 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
+import homeassistant.util.dt as dt_util
 import voluptuous as vol
-
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.const import CONF_NAME
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
-import homeassistant.util.dt as dt_util
 
 from . import tariffs  # noqa: F401  (import for registration side effects)
 from .const import (

@@ -13,12 +13,11 @@ span.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
 from custom_components.hu_energy_tariff.models import PriceComponents, PricingPeriod
-
 from tests.unit.factories import make_state
 
 
@@ -39,11 +38,11 @@ def _period(
 
 def test_quota_change_mid_year_only_applies_from_the_change_forward(strategy):
     tariff_year_start = date(2026, 8, 1)
-    change_at = datetime(2026, 11, 9, tzinfo=timezone.utc)  # 100 days into the tariff year
-    now = datetime(2026, 11, 9, tzinfo=timezone.utc) + timedelta(days=50)  # 50 days after the change
+    change_at = datetime(2026, 11, 9, tzinfo=UTC)  # 100 days into the tariff year
+    now = datetime(2026, 11, 9, tzinfo=UTC) + timedelta(days=50)  # 50 days after the change
 
     old_period = _period(
-        datetime(2020, 1, 1, tzinfo=timezone.utc), change_at, quota_kwh_per_year=2523.0
+        datetime(2020, 1, 1, tzinfo=UTC), change_at, quota_kwh_per_year=2523.0
     )
     new_period = _period(change_at, None, quota_kwh_per_year=3000.0)
 
@@ -76,10 +75,10 @@ def test_quota_change_mid_year_does_not_alter_already_billed_history(strategy):
     must be untouched by the change - only the *forward* eligible_quota
     (and therefore future pricing) shifts."""
     tariff_year_start = date(2026, 8, 1)
-    change_at = datetime(2026, 11, 9, tzinfo=timezone.utc)
+    change_at = datetime(2026, 11, 9, tzinfo=UTC)
 
     old_period = _period(
-        datetime(2020, 1, 1, tzinfo=timezone.utc), change_at, quota_kwh_per_year=2523.0
+        datetime(2020, 1, 1, tzinfo=UTC), change_at, quota_kwh_per_year=2523.0
     )
     new_period = _period(change_at, None, quota_kwh_per_year=3000.0)
 
@@ -114,15 +113,15 @@ def test_periods_from_a_previous_tariff_year_do_not_leak_into_this_years_quota(s
     every tariff year - a period wholly inside a *previous* tariff year
     must contribute nothing to this year's eligible_quota."""
     tariff_year_start = date(2026, 8, 1)
-    now = datetime(2026, 9, 10, tzinfo=timezone.utc)  # 41 days into this tariff year
+    now = datetime(2026, 9, 10, tzinfo=UTC)  # 41 days into this tariff year
 
     last_years_period = _period(
-        datetime(2025, 8, 1, tzinfo=timezone.utc),
-        datetime(2026, 8, 1, tzinfo=timezone.utc),
+        datetime(2025, 8, 1, tzinfo=UTC),
+        datetime(2026, 8, 1, tzinfo=UTC),
         quota_kwh_per_year=2523.0,
     )
     this_years_period = _period(
-        datetime(2026, 8, 1, tzinfo=timezone.utc), None, quota_kwh_per_year=2523.0
+        datetime(2026, 8, 1, tzinfo=UTC), None, quota_kwh_per_year=2523.0
     )
 
     eligible_with_history = strategy._eligible_quota_kwh(  # noqa: SLF001
@@ -140,10 +139,10 @@ def test_period_with_no_quota_is_skipped(strategy):
     tariff sharing the same pricing-period machinery) contributes
     nothing rather than raising."""
     tariff_year_start = date(2026, 8, 1)
-    now = datetime(2026, 9, 10, tzinfo=timezone.utc)
+    now = datetime(2026, 9, 10, tzinfo=UTC)
 
     no_quota_period = PricingPeriod(
-        valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        valid_from=datetime(2020, 1, 1, tzinfo=UTC),
         valid_to=None,
         provider_id="mvm_next",
         distribution_area_id="eon",
@@ -163,10 +162,10 @@ def test_fixed_fee_change_mid_gap_only_applies_from_the_change_forward(strategy)
     partway through that gap, each day must accrue at the fee that was
     actually active *on that day*."""
     tariff_year_start = date(2026, 3, 1)
-    change_at = datetime(2026, 3, 4, tzinfo=timezone.utc)  # fee changes after 3 days
+    change_at = datetime(2026, 3, 4, tzinfo=UTC)  # fee changes after 3 days
 
     old_period = PricingPeriod(
-        valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        valid_from=datetime(2020, 1, 1, tzinfo=UTC),
         valid_to=change_at,
         provider_id="mvm_next",
         distribution_area_id="eon",
@@ -189,7 +188,7 @@ def test_fixed_fee_change_mid_gap_only_applies_from_the_change_forward(strategy)
     state = make_state(
         tariff_year_start=tariff_year_start, fixed_fee_last_accrued_date=date(2026, 3, 1)
     )
-    now = datetime(2026, 3, 7, tzinfo=timezone.utc)  # 6 full days elapsed since last accrual
+    now = datetime(2026, 3, 7, tzinfo=UTC)  # 6 full days elapsed since last accrual
 
     result, _ = strategy.calculate(
         now=now, delta_kwh=0.0, pricing_periods=(old_period, new_period), state=state

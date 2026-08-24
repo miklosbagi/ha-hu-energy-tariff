@@ -3,7 +3,7 @@ pricing period whose window contains the timestamp, never applying a
 newer price to consumption that happened before the change."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from custom_components.hu_energy_tariff.models import (
     Meter,
@@ -30,8 +30,8 @@ def _period(valid_from: datetime, valid_to: datetime | None, price: float) -> Pr
 
 
 def test_price_validity_boundary():
-    change_at = datetime(2026, 6, 1, tzinfo=timezone.utc)
-    old_period = _period(datetime(2020, 1, 1, tzinfo=timezone.utc), change_at, 30.0)
+    change_at = datetime(2026, 6, 1, tzinfo=UTC)
+    old_period = _period(datetime(2020, 1, 1, tzinfo=UTC), change_at, 30.0)
     new_period = _period(change_at, None, 40.0)
 
     meter = Meter(id="main", source_entity_id="sensor.test", role=MeterRole.MAIN)
@@ -44,8 +44,8 @@ def test_price_validity_boundary():
         pricing_periods=(old_period, new_period),
     )
 
-    before = datetime(2026, 5, 31, 23, 59, tzinfo=timezone.utc)
-    after = datetime(2026, 6, 2, tzinfo=timezone.utc)
+    before = datetime(2026, 5, 31, 23, 59, tzinfo=UTC)
+    after = datetime(2026, 6, 2, tzinfo=UTC)
 
     assert site.pricing_period_for(before) is old_period
     assert site.pricing_period_for(change_at) is new_period
