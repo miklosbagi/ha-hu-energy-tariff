@@ -8,7 +8,7 @@ reconfigure and the provider/tariff auto-skip logic.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -219,7 +219,7 @@ async def test_options_flow_opens_new_pricing_period_preserving_history(hass):
     """Options flow starts at distribution_area (provider/tariff are
     auto-skipped), then goes straight to the combined pricing step."""
     original_period = PricingPeriod(
-        valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        valid_from=datetime(2020, 1, 1, tzinfo=UTC),
         valid_to=None,
         provider_id="mvm_next",
         distribution_area_id="eon",

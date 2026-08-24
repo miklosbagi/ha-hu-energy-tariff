@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Check pinned Semgrep version for known vulnerabilities (OSV)
         run: |
@@ -54,7 +54,24 @@ jobs:
           # ruleset instead avoids that tradeoff entirely - p/ci is
           # Semgrep's own curated default for CI (security +
           # correctness rules), pinned like everything else here
-          # rather than resolved dynamically per run.
+          # rather than resolved dynamically per run. p/owasp-top-ten
+          # adds explicit OWASP Top 10 coverage on top of that.
+          #
+          # --volumes-from "$HOSTNAME", not -v "${PWD}:/src": confirmed
+          # live this was silently scanning an empty directory ("0
+          # files... Nothing to scan", reported as a clean pass) - see
+          # hassfest.yml's comment for the full explanation. This
+          # runner's job containers get their checkout from a named
+          # Docker volume, not a real host path, so a host-path bind
+          # mount from inside the job container mounts nothing.
+          #
+          # SEMGREP_SRC_DIRECTORY: --volumes-from shares content at its
+          # *original* path (this job's own $PWD), not at /src -
+          # semgrep's own docker-detection hardcodes /src by default
+          # and errors otherwise ("Detected Docker environment without
+          # a code volume" - confirmed live). This env var (found by
+          # reading semgrep's own env.py upstream) overrides that
+          # expectation instead of fighting it.
           SEMGREP_IMAGE="semgrep/semgrep@sha256:f1f7b71861c7b28b6e0f661225a2c4f58a484f5d0f182465c6d6b3b22f972ade"
-          docker run --rm -v "${PWD}:/src" -w /src "$SEMGREP_IMAGE" \
-            semgrep scan --config p/ci --error --metrics off
+          docker run --rm --volumes-from "$HOSTNAME" -w "$PWD" -e SEMGREP_SRC_DIRECTORY="$PWD" "$SEMGREP_IMAGE" \
+            semgrep scan --config p/ci --config p/owasp-top-ten --error --metrics off

@@ -9,11 +9,11 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime
 
+import homeassistant.util.dt as dt_util
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, State, callback
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-import homeassistant.util.dt as dt_util
 
 from .const import (
     DOMAIN,

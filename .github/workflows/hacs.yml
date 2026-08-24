@@ -1,0 +1,37 @@
+name: HACS
+
+# Deliberately stays on GitHub, unlike everything else moved to Gitea
+# recently (see docs/RELEASING.md) - this action validates what HACS
+# itself would see when indexing this repo (topics, description,
+# archived status, hacs.json against the live repo metadata), which is
+# inherently about the public github.com repo, not the private Gitea
+# mirror. Confirmed from hacs/action's own action.yml: it defaults its
+# GitHub token input to ${{ github.token }} and calls the GitHub API
+# directly - running it from Gitea would mean passing a real GitHub PAT
+# in just to validate the same public repo this workflow already runs
+# against natively.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  hacs:
+    name: hacs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: HACS validation
+        uses: hacs/action@d556e736723344f83838d08488c983a15381059a # 22.5.0
+        with:
+          category: integration
+          # `brands`: this repo hasn't submitted assets to
+          # home-assistant/brands yet - a deliberate, already-made call
+          # (declined earlier, not an oversight), not something this
+          # check should block CI on. Remove this ignore once that
+          # submission happens - confirmed live (running this action
+          # locally against the real repo) that every other check
+          # passes today.
+          ignore: brands

@@ -8,7 +8,7 @@ tests/unit/test_no_double_count.py unit test.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -36,7 +36,7 @@ def _set_source(hass, value: str) -> None:
 
 def _make_entry() -> MockConfigEntry:
     period = PricingPeriod(
-        valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        valid_from=datetime(2020, 1, 1, tzinfo=UTC),
         valid_to=None,
         provider_id="mvm_next",
         distribution_area_id="eon",
@@ -89,8 +89,10 @@ async def test_consumption_delta_updates_entities(hass):
     _set_source(hass, "105.0")
     await hass.async_block_till_done()
 
-    assert float(hass.states.get("sensor.test_home_total_consumption").state) == pytest.approx(5.0)
-    assert float(hass.states.get("sensor.test_home_discounted_consumption").state) == pytest.approx(5.0)
+    total = hass.states.get("sensor.test_home_total_consumption")
+    discounted = hass.states.get("sensor.test_home_discounted_consumption")
+    assert float(total.state) == pytest.approx(5.0)
+    assert float(discounted.state) == pytest.approx(5.0)
 
 
 async def test_reload_does_not_double_count(hass):
@@ -131,7 +133,7 @@ async def test_fixed_fee_does_not_accrue_before_pricing_period_started(hass, fre
     await hass.async_block_till_done()
 
     period = PricingPeriod(
-        valid_from=datetime(2026, 8, 22, tzinfo=timezone.utc),
+        valid_from=datetime(2026, 8, 22, tzinfo=UTC),
         valid_to=None,
         provider_id="mvm_next",
         distribution_area_id="eon",

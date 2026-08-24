@@ -3,7 +3,13 @@ testpaths = ["tests/unit"]
 asyncio_mode = "auto"
 
 [tool.coverage.run]
-source = ["custom_components/hu_energy_tariffs"]
+# NB: the actual CI gate passes --cov=custom_components/hu_energy_tariff
+# explicitly (singular - that's the real package name, see manifest.json's
+# "domain"), which takes precedence over this value - this `source` was
+# stale (plural, a directory that doesn't exist) and only mattered for
+# ad-hoc local `coverage run`/`pytest --cov` invocations without an
+# explicit --cov flag.
+source = ["custom_components/hu_energy_tariff"]
 branch = true
 
 [tool.coverage.report]
@@ -16,4 +22,17 @@ exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",   # pycodestyle/pyflakes
+    "I",             # isort
+    "UP",            # pyupgrade
+    "B",             # bugbear
+    "SIM",           # flake8-simplify
 ]

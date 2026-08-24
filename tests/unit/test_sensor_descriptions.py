@@ -4,7 +4,7 @@ Pure - no Home Assistant boot required.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from custom_components.hu_energy_tariff.models import TariffResult
 from custom_components.hu_energy_tariff.sensor import SENSOR_DESCRIPTIONS
@@ -24,7 +24,7 @@ EXPECTED_KEYS = {
 
 def _sample_result() -> TariffResult:
     return TariffResult(
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         current_price=36.9,
         total_consumption_kwh=5.0,
         discounted_consumption_kwh=5.0,

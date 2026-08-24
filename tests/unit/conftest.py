@@ -6,23 +6,28 @@ SPEC's "headless where practical" requirement.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
-from custom_components.hu_energy_tariff.models import Meter, MeterRole, PriceComponents, PricingPeriod
+from custom_components.hu_energy_tariff.models import (
+    Meter,
+    MeterRole,
+    PriceComponents,
+    PricingPeriod,
+)
 from custom_components.hu_energy_tariff.tariffs.mvm_a1 import A1Strategy
 
 
 @pytest.fixture
 def now() -> datetime:
-    return datetime(2026, 3, 15, 12, 0, 0, tzinfo=timezone.utc)
+    return datetime(2026, 3, 15, 12, 0, 0, tzinfo=UTC)
 
 
 @pytest.fixture
 def a1_pricing_period() -> PricingPeriod:
     return PricingPeriod(
-        valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        valid_from=datetime(2020, 1, 1, tzinfo=UTC),
         valid_to=None,
         provider_id="mvm_next",
         distribution_area_id="eon",

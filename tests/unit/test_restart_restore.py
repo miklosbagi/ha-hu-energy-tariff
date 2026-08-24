@@ -3,7 +3,7 @@ through its dict representation exactly, so the coordinator can resume
 from where it left off (see also test_no_double_count.py)."""
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from custom_components.hu_energy_tariff.models import PersistedMeterState
 
@@ -20,7 +20,7 @@ def test_persisted_state_round_trip():
         accumulated_variable_cost_ft=12345.0,
         accumulated_fixed_cost_ft=678.0,
         fixed_fee_last_accrued_date=date(2026, 3, 1),
-        last_processed_timestamp=datetime(2026, 3, 1, 10, 0, tzinfo=timezone.utc),
+        last_processed_timestamp=datetime(2026, 3, 1, 10, 0, tzinfo=UTC),
         consecutive_invalid_reads=0,
     )
 

@@ -4,9 +4,9 @@
   "codeowners": ["@miklosbagi"],
   "config_flow": true,
   "documentation": "https://github.com/miklosbagi/ha-hu-energy-tariff",
-  "issue_tracker": "https://github.com/miklosbagi/ha-hu-energy-tariff/issues",
   "integration_type": "hub",
   "iot_class": "calculated",
+  "issue_tracker": "https://github.com/miklosbagi/ha-hu-energy-tariff/issues",
   "requirements": [],
-  "version": "0.1.10"
+  "version": "0.1.11"
 }

@@ -142,9 +142,7 @@ class PricingPeriod:
     def covers(self, timestamp: datetime) -> bool:
         if timestamp < self.valid_from:
             return False
-        if self.valid_to is not None and timestamp >= self.valid_to:
-            return False
-        return True
+        return self.valid_to is None or timestamp < self.valid_to
 
     def to_dict(self) -> dict:
         return {

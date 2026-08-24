@@ -4,16 +4,15 @@ touching the underlying cumulative source-meter tracking fields.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from custom_components.hu_energy_tariff.models import TariffSiteConfig
-
 from tests.unit.factories import make_bare_coordinator, make_state
 
 
 def test_tariff_year_bounds_before_and_after_aug1(strategy):
-    before = datetime(2026, 7, 31, 23, 59, tzinfo=timezone.utc)
-    after = datetime(2026, 8, 1, 0, 0, tzinfo=timezone.utc)
+    before = datetime(2026, 7, 31, 23, 59, tzinfo=UTC)
+    after = datetime(2026, 8, 1, 0, 0, tzinfo=UTC)
 
     start_before, end_before = strategy.tariff_year_bounds(before)
     start_after, end_after = strategy.tariff_year_bounds(after)
@@ -43,7 +42,7 @@ def test_coordinator_rolls_over_on_aug1(meter):
         accumulated_fixed_cost_ft=3000.0,
     )
 
-    coordinator._maybe_roll_tariff_year(datetime(2026, 8, 1, 0, 0, tzinfo=timezone.utc))  # noqa: SLF001
+    coordinator._maybe_roll_tariff_year(datetime(2026, 8, 1, 0, 0, tzinfo=UTC))  # noqa: SLF001
 
     state = coordinator._state  # noqa: SLF001
     assert state.tariff_year_start == date(2026, 8, 1)

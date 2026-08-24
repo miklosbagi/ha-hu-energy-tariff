@@ -1,0 +1,49 @@
+name: hassfest
+
+# Home Assistant core's own manifest/translations/strings validator -
+# catches manifest.json/strings.json/translations issues before a HACS
+# reviewer or Home Assistant itself would (a broken manifest schema is
+# rejected at HA startup, not gracefully degraded). Pure local file
+# validation, no GitHub API calls involved (unlike hacs/action - see
+# .github/workflows/hacs.yml for why that one stays on GitHub instead),
+# so this fits the same "gate on Gitea first" pattern as everything
+# else moved here.
+#
+# home-assistant/actions' own composite action runs an unpinned
+# `ghcr.io/home-assistant/hassfest:latest` internally - pinned here by
+# digest instead, consistent with this repo's "never :latest" rule and
+# semgrep.yml's pinned-image pattern, at the cost of doing the docker
+# run directly rather than via the composite action.
+#
+# --volumes-from "$HOSTNAME", not -v "${PWD}:...": confirmed live that
+# a host-path bind mount fails here ("Error: No integrations found!",
+# an empty workspace) - this runner's job containers get their
+# checkout from a named Docker volume, not a real host filesystem path
+# (act_runner's own job-isolation model), so ${PWD} inside this
+# container isn't a path that exists on the Docker host `docker run`
+# actually talks to. --volumes-from shares this job container's own
+# mounts (including that volume) with the sibling container instead,
+# at their original paths - Docker sets a container's hostname to its
+# own short ID unless overridden, and nothing here overrides it, so
+# $HOSTNAME identifies this container to itself. hassfest's entrypoint
+# scans relative to CWD rather than a hardcoded path (confirmed by
+# reading script/hassfest/docker/entrypoint.sh upstream), so `-w`
+# pointing at wherever the volume actually lands is enough - no need
+# to relocate anything to /github/workspace specifically.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  hassfest:
+    name: hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Run hassfest
+        run: |
+          HASSFEST_IMAGE="ghcr.io/home-assistant/hassfest@sha256:312b431380054cb036e383dd6a7cd004d71c6740c4447afe4b8474f9f0cb193e"
+          docker run --rm --volumes-from "$HOSTNAME" -w "$PWD" "$HASSFEST_IMAGE"
