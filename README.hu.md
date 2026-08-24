@@ -88,6 +88,8 @@ Beállítások → Dashboardok → Energy → Elektromos hálózat → Hálózat
 
 `current_price` (Ft/kWh), `total_consumption`, `discounted_consumption`, `market_consumption`, `discounted_quota`, `remaining_discounted_quota`, `variable_cost`, `fixed_cost`, `total_cost` (Ft).
 
+A `discounted_quota` és a `fixed_cost` is attól az időponttól arányosít, amikor az árazási időszak ténylegesen életbe lépett (vagyis a beállításkor, vagy a legutóbbi Configure-en keresztüli áreditáláskor) — soha nem visszamenőlegesen az augusztus 1-jei tarifaév-kezdettől. Ha év közben állítod be az integrációt, nem fog egyből egy egész évnyi "elhasznált" keretet vagy fix díjat mutatni.
+
 ## Fejlesztés
 
 ```bash
@@ -110,10 +112,6 @@ pytest tests/e2e
 ```
 
 A tarifaszámítási motor (`models.py`, `tariff_engine.py`, `tariffs/`) szándékosan független a Home Assistant entitásrétegtől, így a hozzá tartozó tesztek Home Assistant indítása nélkül futnak — lásd a háromrétegű tesztelési stratégiát a [docs/DESIGN.md](docs/DESIGN.md#testing-strategy-three-layers-each-proving-something-different) dokumentumban (angol nyelven).
-
-### CI
-
-Minden PR lefuttatja a unit teszteket (minimum 80%-os lefedettség szükséges, és legfeljebb 10 százalékpontos csökkenés a `main`-hez képest), a docker-compose e2e füst tesztet, valamint a CodeQL statikus elemzést. A release-ek automatikusan készülnek és cimkéződnek merge-kor, a `Tag/Patch` / `Tag/Minor` / `Tag/Major` PR címkék alapján — lásd: [docs/RELEASING.md](docs/RELEASING.md) (angol nyelven).
 
 ## Dokumentáció
 

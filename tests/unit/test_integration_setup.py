@@ -119,6 +119,50 @@ async def test_reload_does_not_double_count(hass):
     assert float(hass.states.get("sensor.test_home_total_consumption").state) == pytest.approx(10.0)
 
 
+async def test_fixed_fee_does_not_accrue_before_pricing_period_started(hass, freezer):
+    """Setting up mid-tariff-year must not backdate fixed-fee accrual to
+    the tariff year's start (1 Aug) - only from whenever the pricing
+    period configured here actually took effect. Mirrors the same
+    guarantee _eligible_quota_kwh already gives the quota side (see
+    tests/unit/test_quota_change_mid_year.py)."""
+    freezer.move_to("2026-08-24T12:00:00+00:00")
+
+    _set_source(hass, "100.0")
+    await hass.async_block_till_done()
+
+    period = PricingPeriod(
+        valid_from=datetime(2026, 8, 22, tzinfo=timezone.utc),
+        valid_to=None,
+        provider_id="mvm_next",
+        distribution_area_id="eon",
+        tariff_plan_id="mvm_a1",
+        quota_kwh_per_year=2523,
+        fixed_monthly_fee_ft=3100.0,  # 100.0 Ft/day net in August (31 days)
+        price_components=PriceComponents(energy_charge_discounted=36.9, energy_charge_market=70.0),
+    )
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Test Home",
+        data={
+            CONF_SOURCE_ENTITY_ID: "sensor.test_energy",
+            CONF_PROVIDER_ID: "mvm_next",
+            CONF_DISTRIBUTION_AREA_ID: "eon",
+            CONF_TARIFF_PLAN_ID: "mvm_a1",
+            CONF_PRICING_PERIODS: [period.to_dict()],
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    # Only 2 full days elapsed since valid_from (Aug 22 -> Aug 24), not
+    # the 23 days since tariff_year_start (Aug 1) - at 127.0 Ft/day
+    # gross (100.0 net * 1.27 VAT), that's 254.0 Ft, not ~2921.0 Ft.
+    fixed_cost = hass.states.get("sensor.test_home_fixed_cost")
+    assert fixed_cost is not None
+    assert float(fixed_cost.state) == pytest.approx(254.0)
+
+
 async def test_meter_reset_does_not_go_negative(hass):
     _set_source(hass, "500.0")
     await hass.async_block_till_done()

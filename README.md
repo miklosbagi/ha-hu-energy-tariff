@@ -88,6 +88,8 @@ Settings → Dashboards → Energy → Electricity grid → Grid consumption →
 
 `current_price` (Ft/kWh), `total_consumption`, `discounted_consumption`, `market_consumption`, `discounted_quota`, `remaining_discounted_quota`, `variable_cost`, `fixed_cost`, `total_cost` (Ft).
 
+`discounted_quota` and `fixed_cost` both prorate from whenever your pricing period actually took effect (i.e. when you set it up, or last edited prices via Configure) — never retroactively from the 1 Aug tariff-year start. Setting up partway through the year won't show a full year's worth of quota or fixed fee already "used up."
+
 ## Development
 
 ```bash
@@ -110,10 +112,6 @@ pytest tests/e2e
 ```
 
 The tariff calculation engine (`models.py`, `tariff_engine.py`, `tariffs/`) is intentionally independent of the Home Assistant entity layer, so its tests need no Home Assistant boot at all — see [docs/DESIGN.md](docs/DESIGN.md#testing-strategy-three-layers-each-proving-something-different) for the three-layer testing strategy.
-
-### CI
-
-Every PR runs unit tests (≥80% coverage required, and no more than a 10-point drop vs. `main`), the docker-compose e2e smoke test, and CodeQL static analysis. Releases are tagged and published automatically on merge, driven by `Tag/Patch` / `Tag/Minor` / `Tag/Major` PR labels — see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Documentation
 
