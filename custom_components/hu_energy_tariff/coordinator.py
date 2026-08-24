@@ -7,7 +7,7 @@ tariff strategy (a tariff-specific concern) - see tariff_engine.py.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import date, datetime
 
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, State, callback
 from homeassistant.helpers.event import async_track_state_change_event
@@ -78,7 +78,7 @@ class HuEnergyTariffsCoordinator(DataUpdateCoordinator[TariffResult]):
                 tariff_year_start=tariff_year_start,
                 source_baseline_kwh=initial_reading or 0.0,
                 last_valid_source_kwh=initial_reading or 0.0,
-                fixed_fee_last_accrued_date=tariff_year_start,
+                fixed_fee_last_accrued_date=self._fixed_fee_accrual_start(tariff_year_start),
             )
             await self._save_state()
 
@@ -241,7 +241,22 @@ class HuEnergyTariffsCoordinator(DataUpdateCoordinator[TariffResult]):
         state.accumulated_market_kwh = 0.0
         state.accumulated_variable_cost_ft = 0.0
         state.accumulated_fixed_cost_ft = 0.0
-        state.fixed_fee_last_accrued_date = start
+        state.fixed_fee_last_accrued_date = self._fixed_fee_accrual_start(start)
+
+    def _fixed_fee_accrual_start(self, tariff_year_start: date) -> date:
+        """A fixed fee can only accrue from whichever pricing period was
+        configured first - never for days before any price existed at
+        all. Same principle the strategy's own quota proration already
+        applies (see `_eligible_quota_kwh` in tariffs/mvm_a1.py); this
+        mirrors it for the fee side, which previously accrued from
+        `tariff_year_start` unconditionally and so over-charged anyone
+        who set up the integration partway through a tariff year."""
+        if not self._site.pricing_periods:
+            return tariff_year_start
+        earliest_period_start = min(
+            period.valid_from.date() for period in self._site.pricing_periods
+        )
+        return max(tariff_year_start, earliest_period_start)
 
     def _peek_result(self, now: datetime) -> TariffResult:
         """A zero-delta calculation used only to seed initial entity
