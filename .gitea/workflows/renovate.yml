@@ -1,0 +1,82 @@
+name: Renovate
+
+# Gitea-native replacement for .github/dependabot.yml - same reasoning
+# as semgrep.yml: since Gitea is the sole release authority (see
+# docs/RELEASING.md), a dependency-bump PR opened directly on GitHub
+# never gets an immediate release (it's not a gitea-promote/* branch).
+# Running Renovate here instead means bump PRs flow through the normal
+# Gitea-authority pipeline like everything else.
+#
+# Adapted from the_collective/reference-service-repo's renovate.yml
+# template (agentic-home's fleet-wide pattern), minus the
+# SERVICE_NAME/service.env placeholder-skip logic, which doesn't apply
+# here - this isn't a the_collective service repo, it's a personal
+# repo under the `mikulas` user namespace. That also means the org
+# secrets that template relies on don't carry over automatically:
+# RENOVATE_OPENBAO_ROLE_ID/RENOVATE_OPENBAO_SECRET_ID must be added as
+# *repository* secrets here (Settings -> Actions -> Secrets), reusing
+# the existing renovate AppRole - it's already scoped to read
+# secret/shared/gitea-api/renovate, not tied to a specific repo. The
+# `renovate` Gitea bot account also needs to be added as a collaborator
+# on this repo (Settings -> Collaborators) - it has no access here by
+# default the way it does on the_collective's repos.
+#
+# CA-bundle host path: reused verbatim from the template, since Gitea
+# Actions runners are shared across the whole gitea.mb instance (one
+# act_runner fleet, not one per org/repo) - unverified for this
+# specific repo until the first live run; see the template's own
+# comment for why a host-side (not container-side) path is required
+# for this nested `docker run`.
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch token from OpenBao and run Renovate
+        env:
+          RENOVATE_OPENBAO_ROLE_ID: ${{ secrets.RENOVATE_OPENBAO_ROLE_ID }}
+          RENOVATE_OPENBAO_SECRET_ID: ${{ secrets.RENOVATE_OPENBAO_SECRET_ID }}
+          REPO: ${{ gitea.repository }}
+        run: |
+          if [[ -z "$RENOVATE_OPENBAO_ROLE_ID" || -z "$RENOVATE_OPENBAO_SECRET_ID" ]]; then
+            echo "::error::RENOVATE_OPENBAO_ROLE_ID/RENOVATE_OPENBAO_SECRET_ID not set as repository secrets"
+            exit 1
+          fi
+          BASE="https://openbao.mb/v1"
+          CLIENT_TOKEN=$(jq -n --arg r "$RENOVATE_OPENBAO_ROLE_ID" --arg s "$RENOVATE_OPENBAO_SECRET_ID" '{role_id: $r, secret_id: $s}' \
+            | curl -sfk -X POST -d @- "${BASE}/auth/approle/login" | jq -r '.auth.client_token')
+          TOKEN=$(curl -sfk -H "X-Vault-Token: ${CLIENT_TOKEN}" "${BASE}/secret/shared/gitea-api/renovate" | jq -r '.data.token')
+          if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
+            echo "::error::Could not fetch renovate token from OpenBao (secret/shared/gitea-api/renovate)"
+            exit 1
+          fi
+          echo "::add-mask::${TOKEN}"
+
+          GITHUB_TOKEN=$(curl -sfk -H "X-Vault-Token: ${CLIENT_TOKEN}" "${BASE}/secret/shared/renovate/github-com-token" 2>/dev/null | jq -r '.data.token // empty' || true)
+          unset CLIENT_TOKEN
+          GITHUB_TOKEN_ARGS=()
+          if [[ -n "$GITHUB_TOKEN" ]]; then
+            echo "::add-mask::${GITHUB_TOKEN}"
+            GITHUB_TOKEN_ARGS=(-e "RENOVATE_GITHUB_COM_TOKEN=${GITHUB_TOKEN}")
+          else
+            echo "No github.com token provisioned yet (secret/shared/renovate/github-com-token) -- changelog/release-notes fetching will be skipped, everything else still runs normally."
+          fi
+
+          docker run --rm \
+            -v /home/web.mb_docker-kGbmBaXy/_common/certs/ca_bundle.crt:/certs/ca_bundle.crt:ro \
+            -e RENOVATE_TOKEN="${TOKEN}" \
+            -e RENOVATE_PLATFORM=gitea \
+            -e RENOVATE_ENDPOINT=https://gitea.mb/api/v1/ \
+            -e RENOVATE_USERNAME=renovate \
+            -e RENOVATE_GIT_AUTHOR="Renovate Bot <renovate@agentic-home.internal>" \
+            -e NODE_EXTRA_CA_CERTS=/certs/ca_bundle.crt \
+            -e GIT_SSL_CAINFO=/certs/ca_bundle.crt \
+            -e LOG_LEVEL=info \
+            "${GITHUB_TOKEN_ARGS[@]}" \
+            renovate/renovate:44.14.3 "${REPO}"

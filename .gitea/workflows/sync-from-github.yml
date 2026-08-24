@@ -150,6 +150,11 @@ jobs:
                       "title": "Sync from GitHub",
                       "head": "github-sync",
                       "base": "main",
+                      # Hard rule: every Gitea PR needs an assignee or
+                      # it may not get picked up (surfaced by the repo
+                      # owner directly, not a Gitea quirk worth
+                      # rediscovering).
+                      "assignees": ["mikulas"],
                       "body": (
                           "Automated - opens whenever GitHub main gets ahead of "
                           "Gitea main (a community PR merged there, or anything "

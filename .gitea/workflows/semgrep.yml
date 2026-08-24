@@ -1,0 +1,60 @@
+name: Semgrep
+
+# Gitea-side SAST scanning - CodeQL (.github/workflows/codeql.yml) is
+# tied to GitHub's proprietary Code Scanning API and doesn't run on
+# Gitea/Forgejo runners, so it has no direct port. Semgrep OSS is the
+# replacement: same "pinned + checksum-verified" hygiene this repo
+# already applies to gitleaks (secret-scan.yml), but pinned by Docker
+# image digest instead of a binary tarball's sha256, since Semgrep
+# ships as a Python package wrapped in an image rather than a single
+# static binary. The digest itself already *is* the checksum - still
+# OSV-checked below for known vulnerabilities in the pinned version,
+# same as gitleaks.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly scheduled scan, independent of code changes - mirrors
+    # codeql.yml's cadence.
+    - cron: "30 3 * * 1"
+
+jobs:
+  semgrep:
+    name: semgrep
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check pinned Semgrep version for known vulnerabilities (OSV)
+        run: |
+          SEMGREP_VERSION="1.174.0"
+          OSV_RESULT="$(curl -sf -X POST https://api.osv.dev/v1/query -H 'Content-Type: application/json' \
+            -d "{\"version\":\"${SEMGREP_VERSION}\",\"package\":{\"name\":\"semgrep\",\"ecosystem\":\"PyPI\"}}")"
+          if echo "$OSV_RESULT" | jq -e '(.vulns // []) | length > 0' >/dev/null; then
+            echo "::error::Known vulnerabilities found for semgrep v${SEMGREP_VERSION} -- see https://osv.dev"
+            echo "$OSV_RESULT" | jq '.vulns[] | {id, summary}'
+            exit 1
+          fi
+          echo "OSV: no known vulnerabilities for semgrep v${SEMGREP_VERSION}"
+
+      - name: Run Semgrep
+        run: |
+          # Pinned by image digest (not a version tag) - the digest is
+          # itself the integrity check, resolved from Docker Hub for
+          # semgrep/semgrep:1.174.0 at the time this workflow was
+          # written. To bump: pick a new version, confirm its OSV
+          # result above, then update both this digest and
+          # SEMGREP_VERSION together.
+          # `--config auto` needs metrics *on* (it calls out to
+          # Semgrep's registry to pick rules, and refuses to do that
+          # with `--metrics off` - confirmed live: "Cannot create auto
+          # config when metrics are off"). Using a fixed public
+          # ruleset instead avoids that tradeoff entirely - p/ci is
+          # Semgrep's own curated default for CI (security +
+          # correctness rules), pinned like everything else here
+          # rather than resolved dynamically per run.
+          SEMGREP_IMAGE="semgrep/semgrep@sha256:f1f7b71861c7b28b6e0f661225a2c4f58a484f5d0f182465c6d6b3b22f972ade"
+          docker run --rm -v "${PWD}:/src" -w /src "$SEMGREP_IMAGE" \
+            semgrep scan --config p/ci --error --metrics off

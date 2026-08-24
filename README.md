@@ -8,7 +8,6 @@
 
 [![CI](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/ci.yml/badge.svg)](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/ci.yml)
 [![E2E](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/e2e.yml/badge.svg)](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/e2e.yml)
-[![CodeQL](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/codeql.yml/badge.svg)](https://github.com/miklosbagi/ha-hu-energy-tariff/actions/workflows/codeql.yml)
 <br>
 [![Release](https://img.shields.io/github/v/release/miklosbagi/ha-hu-energy-tariff?sort=semver)](https://github.com/miklosbagi/ha-hu-energy-tariff/releases)
 [![Maintained](https://img.shields.io/badge/maintained-yes-brightgreen)](https://github.com/miklosbagi/ha-hu-energy-tariff/pulse)
