@@ -10,23 +10,23 @@ name: Renovate
 # Adapted from the_collective/reference-service-repo's renovate.yml
 # template (agentic-home's fleet-wide pattern), minus the
 # SERVICE_NAME/service.env placeholder-skip logic, which doesn't apply
-# here - this isn't a the_collective service repo, it's a personal
-# repo under the `mikulas` user namespace. That also means the org
-# secrets that template relies on don't carry over automatically:
-# RENOVATE_OPENBAO_ROLE_ID/RENOVATE_OPENBAO_SECRET_ID must be added as
-# *repository* secrets here (Settings -> Actions -> Secrets), reusing
-# the existing renovate AppRole - it's already scoped to read
-# secret/shared/gitea-api/renovate, not tied to a specific repo. The
-# `renovate` Gitea bot account also needs to be added as a collaborator
-# on this repo (Settings -> Collaborators) - it has no access here by
-# default the way it does on the_collective's repos.
+# here. Originally a personal repo under the `mikulas` user namespace
+# (RENOVATE_OPENBAO_ROLE_ID/SECRET_ID as repository secrets, `renovate`
+# added as a repo collaborator directly, both since org secrets/team
+# access weren't available to a personal-namespace repo) - since moved
+# into the `agentic_multi_repo_projects` org alongside other similar
+# projects, so it now picks up the org-level secrets the same way
+# the_collective's repos do. The old repository-level secrets and the
+# direct collaborator grant both still work post-move (Gitea repo
+# transfers preserve collaborators; repo-level secrets simply sit
+# alongside the org-level ones, redundant but harmless) - not yet
+# cleaned up, not urgent.
 #
 # CA-bundle host path: reused verbatim from the template, since Gitea
 # Actions runners are shared across the whole gitea.mb instance (one
-# act_runner fleet, not one per org/repo) - unverified for this
-# specific repo until the first live run; see the template's own
-# comment for why a host-side (not container-side) path is required
-# for this nested `docker run`.
+# act_runner fleet, not one per org/repo) - confirmed live (first real
+# run, before the org move) that this path resolves correctly for this
+# repo too, not just the_collective's.
 on:
   schedule:
     - cron: '0 6 * * *'
@@ -45,7 +45,7 @@ jobs:
           REPO: ${{ gitea.repository }}
         run: |
           if [[ -z "$RENOVATE_OPENBAO_ROLE_ID" || -z "$RENOVATE_OPENBAO_SECRET_ID" ]]; then
-            echo "::error::RENOVATE_OPENBAO_ROLE_ID/RENOVATE_OPENBAO_SECRET_ID not set as repository secrets"
+            echo "::error::RENOVATE_OPENBAO_ROLE_ID/RENOVATE_OPENBAO_SECRET_ID not visible to this job (check org or repository secrets)"
             exit 1
           fi
           BASE="https://openbao.mb/v1"
