@@ -15,6 +15,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+from .backfill import async_fetch_daily_deltas, backfill_start_date, replay_deltas
 from .const import (
     DOMAIN,
     IMPLAUSIBLE_JUMP_CEILING_KWH,
@@ -47,11 +48,16 @@ class HuEnergyTariffsCoordinator(DataUpdateCoordinator[TariffResult]):
         site: TariffSiteConfig,
         meter: Meter,
         strategy: TariffStrategy,
+        backfill_enabled: bool = False,
     ) -> None:
         super().__init__(hass, _LOGGER, name=f"{DOMAIN}_{entry_id}_{meter.id}")
         self._site = site
         self._meter = meter
         self._strategy = strategy
+        # Only ever consulted on first-ever setup (see async_setup) - a
+        # config-flow-time choice, not something a reload/restart
+        # re-evaluates.
+        self._backfill_enabled = backfill_enabled
         self._store: Store = Store(
             hass, STORAGE_VERSION, f"{DOMAIN}_{entry_id}_meter_{meter.id}"
         )
@@ -72,13 +78,8 @@ class HuEnergyTariffsCoordinator(DataUpdateCoordinator[TariffResult]):
         else:
             initial_reading = self._read_current_source_kwh()
             tariff_year_start, _ = self._strategy.tariff_year_bounds(now)
-            self._state = PersistedMeterState(
-                schema_version=STORAGE_VERSION,
-                meter_id=self._meter.id,
-                tariff_year_start=tariff_year_start,
-                source_baseline_kwh=initial_reading or 0.0,
-                last_valid_source_kwh=initial_reading or 0.0,
-                fixed_fee_last_accrued_date=self._fixed_fee_accrual_start(tariff_year_start),
+            self._state = await self._build_initial_state(
+                now=now, tariff_year_start=tariff_year_start, initial_reading=initial_reading
             )
             await self._save_state()
 
@@ -89,6 +90,63 @@ class HuEnergyTariffsCoordinator(DataUpdateCoordinator[TariffResult]):
         # Seed initial data so entities have a value before the first
         # source-sensor state change fires.
         self.async_set_updated_data(self._peek_result(now))
+
+    async def _build_initial_state(
+        self, *, now: datetime, tariff_year_start: date, initial_reading: float | None
+    ) -> PersistedMeterState:
+        """Construct the state a fresh (never-before-persisted) setup
+        starts from - backfilled from Recorder history if enabled and
+        available, otherwise the same zero baseline as always."""
+        baseline = initial_reading or 0.0
+
+        if self._backfill_enabled:
+            start = backfill_start_date(tariff_year_start=tariff_year_start, today=now.date())
+            deltas = await async_fetch_daily_deltas(
+                self.hass, self._meter.source_entity_id, start, now.date()
+            )
+            if deltas is not None:
+                seed = PersistedMeterState(
+                    schema_version=STORAGE_VERSION,
+                    meter_id=self._meter.id,
+                    tariff_year_start=tariff_year_start,
+                    source_baseline_kwh=baseline,
+                    last_valid_source_kwh=baseline,
+                    fixed_fee_last_accrued_date=start,
+                )
+                state = replay_deltas(
+                    strategy=self._strategy,
+                    pricing_periods=self._site.pricing_periods,
+                    start=start,
+                    end=now.date(),
+                    daily_deltas=deltas,
+                    initial_state=seed,
+                )
+                # replay_deltas only ever sees historical deltas, never
+                # the raw source reading - stamp the real current
+                # reading back on, same as a live event would (see
+                # _async_process_event).
+                state.last_valid_source_kwh = baseline
+                _LOGGER.info(
+                    "%s: seeded initial state from %d day(s) of recorded history since %s",
+                    self._meter.source_entity_id,
+                    len(deltas),
+                    start,
+                )
+                return state
+            _LOGGER.debug(
+                "%s: backfill enabled but no recorded history available - "
+                "starting from zero",
+                self._meter.source_entity_id,
+            )
+
+        return PersistedMeterState(
+            schema_version=STORAGE_VERSION,
+            meter_id=self._meter.id,
+            tariff_year_start=tariff_year_start,
+            source_baseline_kwh=baseline,
+            last_valid_source_kwh=baseline,
+            fixed_fee_last_accrued_date=self._fixed_fee_accrual_start(tariff_year_start),
+        )
 
     async def async_unload(self) -> None:
         if self._unsub_state_change is not None:
