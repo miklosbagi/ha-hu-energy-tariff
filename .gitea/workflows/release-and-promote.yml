@@ -95,7 +95,26 @@ jobs:
             echo "CHANGELOG_EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create tag + release on Gitea
+      # Tag created and pushed here explicitly, *before* the release API
+      # call below - not left for the release-creation call to create
+      # implicitly. Every release since the authority-flip (0.1.10
+      # onward) silently failed to reach GitHub because of exactly that
+      # assumption: the release API creates the tag server-side, but
+      # this job's local checkout never gets a local `refs/tags/$TAG`
+      # ref out of that, so the later "push tag to GitHub" step always
+      # failed with "src refspec ... does not match any" - the Gitea
+      # release itself still succeeded, so this went unnoticed for three
+      # releases in a row. Creating the tag ourselves means it already
+      # exists locally for that later step to actually push.
+      - name: Create and push the release tag
+        if: steps.bump.outputs.level != 'none'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git tag "$TAG"
+          git push origin "refs/tags/${TAG}"
+
+      - name: Create release on Gitea
         if: steps.bump.outputs.level != 'none'
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
