@@ -11,19 +11,32 @@ jobs:
   add-default-tag-label:
     name: add-default-tag-label
     runs-on: ubuntu-latest
-    # Promotion PRs (Gitea -> GitHub, see .gitea/workflows/promote-to-
-    # github.yml) already arrive with the correct Tag/* label copied
-    # from their originating Gitea PR - skip the default-Tag/Patch add
-    # here so it doesn't end up sitting alongside a different label.
-    if: ${{ !startsWith(github.head_ref, 'gitea-promote/') }}
     steps:
       # Every PR gets Tag/Patch by default (see docs/RELEASING.md) - the
       # author can remove it (or swap for Tag/Minor / Tag/Major) before
       # merge; removing every Tag/* label means the merge won't tag/release.
-      - name: Add Tag/Patch label
+      #
+      # Only if no Tag/* label is already present - covers promotion PRs
+      # (Gitea -> GitHub, see .gitea/workflows/release-and-promote.yml),
+      # which already arrive with the correct label copied from their
+      # originating Gitea PR, via the same general check rather than a
+      # branch-name special case. Also covers the same double-tagging bug
+      # hit live on the Gitea side: this workflow fires on `opened`, but a
+      # human or agent can add a different Tag/* label around the same
+      # time - check first, don't blindly add on top of it.
+      - name: Add Tag/Patch label (unless a Tag/* label is already present)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          EXISTING_LABELS=$(gh pr view "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --json labels --jq '.labels[].name')
+
+          if echo "$EXISTING_LABELS" | grep -q '^Tag/'; then
+            echo "A Tag/* label is already present ($(echo "$EXISTING_LABELS" | tr '\n' ' ')) - not adding Tag/Patch on top of it."
+            exit 0
+          fi
+
           gh pr edit "${{ github.event.pull_request.number }}" \
             --add-label "Tag/Patch" \
             --repo "${{ github.repository }}"

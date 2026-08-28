@@ -21,6 +21,16 @@ jobs:
       # author can remove it (or swap for Tag/Minor / Tag/Major) before
       # merge; removing every Tag/* label means the merge won't tag/release.
       #
+      # Only if no Tag/* label is already present: this workflow fires on
+      # `opened`, but a human or agent can add a different Tag/* label
+      # around the same time (e.g. via the API, right after creating the
+      # PR) - a real double-tagging bug hit live, where Tag/Minor (set
+      # deliberately) ended up sitting alongside this workflow's own
+      # unconditional Tag/Patch. release-and-promote.yml's precedence
+      # (Major > Minor > Patch) meant the version computation was still
+      # correct, but two contradictory labels on one PR is confusing and
+      # easy to misread during review - check first, don't blindly add.
+      #
       # --cacert: this runner's job containers have gitea.mb's internal
       # CA bundle bind-mounted at /certs/ca_bundle.crt (act_runner config,
       # agentic-home infra - originally added so git itself would trust
@@ -29,10 +39,21 @@ jobs:
       # Deliberately proper trust, not -k/--insecure - see agentic-home's
       # memory/learned/docker.md for why that's the rejected anti-pattern
       # for this exact recurring problem.
-      - name: Add Tag/Patch label
+      - name: Add Tag/Patch label (unless a Tag/* label is already present)
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
         run: |
+          EXISTING_LABELS=$(curl -sSf \
+            --cacert /certs/ca_bundle.crt \
+            -H "Authorization: token ${GITEA_TOKEN}" \
+            "${{ github.server_url }}/api/v1/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" \
+            | jq -r '.[].name')
+
+          if echo "$EXISTING_LABELS" | grep -q '^Tag/'; then
+            echo "A Tag/* label is already present ($(echo "$EXISTING_LABELS" | tr '\n' ' ')) - not adding Tag/Patch on top of it."
+            exit 0
+          fi
+
           curl -sSf -X POST \
             --cacert /certs/ca_bundle.crt \
             -H "Authorization: token ${GITEA_TOKEN}" \
