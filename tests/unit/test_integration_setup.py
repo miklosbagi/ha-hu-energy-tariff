@@ -8,12 +8,14 @@ tests/unit/test_no_double_count.py unit test.
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from unittest.mock import patch
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.hu_energy_tariff.const import (
+    CONF_BACKFILL_ENABLED,
     CONF_DISTRIBUTION_AREA_ID,
     CONF_PRICING_PERIODS,
     CONF_PROVIDER_ID,
@@ -163,6 +165,59 @@ async def test_fixed_fee_does_not_accrue_before_pricing_period_started(hass, fre
     fixed_cost = hass.states.get("sensor.test_home_fixed_cost")
     assert fixed_cost is not None
     assert float(fixed_cost.state) == pytest.approx(254.0)
+
+
+async def test_backfill_seeds_initial_state_from_recorded_history(hass, freezer):
+    """Contrast with test_fixed_fee_does_not_accrue_before_pricing_period_started
+    above: same 23-elapsed-day setup, but with backfill enabled and the
+    pricing period backdated to match (as config_flow.py's backfill step
+    would do) - fixed cost accrues for the *entire* backfilled range,
+    not just since setup, and historical deltas land in total_consumption
+    even though no live state-change event ever reported them."""
+    freezer.move_to("2026-08-24T12:00:00+00:00")
+
+    _set_source(hass, "100.0")
+    await hass.async_block_till_done()
+
+    period = PricingPeriod(
+        valid_from=datetime(2026, 8, 1, tzinfo=UTC),  # backdated to the backfill start
+        valid_to=None,
+        provider_id="mvm_next",
+        distribution_area_id="eon",
+        tariff_plan_id="mvm_a1",
+        quota_kwh_per_year=2523,
+        fixed_monthly_fee_ft=3100.0,  # 100.0 Ft/day net in August (31 days)
+        price_components=PriceComponents(energy_charge_discounted=36.9, energy_charge_market=70.0),
+    )
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Test Home",
+        data={
+            CONF_SOURCE_ENTITY_ID: "sensor.test_energy",
+            CONF_PROVIDER_ID: "mvm_next",
+            CONF_DISTRIBUTION_AREA_ID: "eon",
+            CONF_TARIFF_PLAN_ID: "mvm_a1",
+            CONF_PRICING_PERIODS: [period.to_dict()],
+            CONF_BACKFILL_ENABLED: True,
+        },
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.hu_energy_tariff.coordinator.async_fetch_daily_deltas",
+        return_value={date(2026, 8, 1): 10.0, date(2026, 8, 3): 5.0},
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    total_consumption = hass.states.get("sensor.test_home_total_consumption")
+    assert float(total_consumption.state) == pytest.approx(15.0)
+
+    # 23 full days elapsed (Aug 1 -> Aug 24) since the backdated
+    # valid_from, all accrued - not the ~254.0 Ft (2 days) the
+    # non-backfilled test above shows for the same "now".
+    fixed_cost = hass.states.get("sensor.test_home_fixed_cost")
+    assert float(fixed_cost.state) == pytest.approx(2921.0)
 
 
 async def test_meter_reset_does_not_go_negative(hass):

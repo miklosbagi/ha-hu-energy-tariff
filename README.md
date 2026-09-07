@@ -75,6 +75,8 @@ Settings → Devices & Services → Add Integration → "Hungarian Energy Tariff
 
 (Provider and tariff-plan pickers are skipped automatically while there's only one of each — MVM Next and A1 today; they reappear on their own once a second provider or tariff is added.)
 
+If Home Assistant already has recorded history for your chosen sensor (e.g. it's been running for a while before you added this integration), you'll be offered a third screen: use that history to start with accurate quota/cost tracking instead of from zero today. This only ever reaches back to the later of this tariff year's start (1 Aug) or 1 January of the current calendar year, and only appears when there's actually something to offer — no history, no extra screen.
+
 Prices are **net** (excluding 27% VAT/ÁFA) — the integration adds VAT automatically. Defaults are pre-filled from MVM's official price sheet (the discounted energy price varies by the distribution area picked in step 1; everything else doesn't) — confirm them against your actual bill, which also cross-checks that the integration's total lines up with what you're actually charged.
 
 Edit prices later via the integration's **Configure** (options) flow — this opens a new price validity period rather than overwriting the old one, so already-accumulated cost stays correct.

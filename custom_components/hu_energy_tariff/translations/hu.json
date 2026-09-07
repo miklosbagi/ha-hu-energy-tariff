@@ -59,6 +59,13 @@
             }
           }
         }
+      },
+      "backfill": {
+        "title": "Meglévő előzmények felhasználása?",
+        "description": "A Home Assistant már rögzített {day_count} nap előzményt az energiamérő szenzorodhoz, {since_date} óta, összesen {total_kwh} kWh mennyiségben. Ezt használjuk a pontos keret- és költségkövetés induló alapjaként, ahelyett hogy ma nulláról kezdenénk?",
+        "data": {
+          "backfill_enabled": "Kezdőállapot beállítása ezen előzmények alapján"
+        }
       }
     },
     "error": {
