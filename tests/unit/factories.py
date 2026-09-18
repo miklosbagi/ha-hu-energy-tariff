@@ -43,6 +43,7 @@ def make_bare_coordinator(*, meter: Meter, site: TariffSiteConfig) -> HuEnergyTa
     coordinator = HuEnergyTariffsCoordinator.__new__(HuEnergyTariffsCoordinator)
     coordinator._site = site  # noqa: SLF001
     coordinator._meter = meter  # noqa: SLF001
+    coordinator._backfill_enabled = False  # noqa: SLF001
     coordinator._strategy = A1Strategy()  # noqa: SLF001
     coordinator._state = None  # noqa: SLF001
     return coordinator

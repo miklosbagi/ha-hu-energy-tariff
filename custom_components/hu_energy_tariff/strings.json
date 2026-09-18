@@ -59,6 +59,13 @@
             }
           }
         }
+      },
+      "backfill": {
+        "title": "Use existing history?",
+        "description": "Home Assistant already has {day_count} day(s) of recorded history for your energy sensor, since {since_date}, totaling {total_kwh} kWh. Use it to start with accurate quota and cost tracking instead of starting from zero today?",
+        "data": {
+          "backfill_enabled": "Seed initial state from this history"
+        }
       }
     },
     "error": {

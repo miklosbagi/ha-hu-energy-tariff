@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import dataclasses
+from datetime import UTC, date, datetime, time
 from typing import Any
 
 import homeassistant.util.dt as dt_util
@@ -13,8 +14,10 @@ from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 
 from . import tariffs  # noqa: F401  (import for registration side effects)
+from .backfill import async_fetch_daily_deltas, backfill_start_date
 from .const import (
     A1_OFFICIAL_PRICE_SHEET_URL,
+    CONF_BACKFILL_ENABLED,
     CONF_DISCOUNTED_PRICE_FT_PER_KWH,
     CONF_DISTRIBUTION_AREA_ID,
     CONF_DISTRIBUTION_CHARGE_FT_PER_KWH,
@@ -38,7 +41,7 @@ from .const import (
     PROVIDERS,
 )
 from .models import PriceComponents, PricingPeriod
-from .tariffs.registry import available_tariff_plans
+from .tariffs.registry import available_tariff_plans, get_strategy, get_tariff_plan
 
 DEFAULT_NAME = "Hungarian Energy Tariffs"
 
@@ -161,10 +164,21 @@ def _flatten_pricing_input(user_input: dict[str, Any]) -> dict[str, Any]:
 
 
 def _build_pricing_period(
-    *, provider_id: str, distribution_area_id: str, tariff_plan_id: str, user_input: dict[str, Any]
+    *,
+    provider_id: str,
+    distribution_area_id: str,
+    tariff_plan_id: str,
+    user_input: dict[str, Any],
+    valid_from: datetime | None = None,
 ) -> PricingPeriod:
+    """`valid_from` defaults to now (today's behavior). A backfilled
+    setup passes the actual backfill start date instead - the quota and
+    fixed-fee proration in tariffs/mvm_a1.py both clamp their day-count
+    to this field, so a period that doesn't reach back to the backfilled
+    range would silently cancel out the whole backfill (see backfill.py
+    and coordinator.py::_build_initial_state)."""
     return PricingPeriod(
-        valid_from=dt_util.utcnow(),
+        valid_from=valid_from or dt_util.utcnow(),
         valid_to=None,
         provider_id=provider_id,
         distribution_area_id=distribution_area_id,
@@ -187,6 +201,10 @@ class HuEnergyTariffsConfigFlow(ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._data: dict[str, Any] = {}
+        self._pricing_input: dict[str, Any] | None = None
+        self._backfill_start: date | None = None
+        self._backfill_day_count = 0
+        self._backfill_total_kwh = 0.0
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -276,14 +294,8 @@ class HuEnergyTariffsConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Electricity price + network usage fees, one screen, two sections."""
         if user_input is not None:
-            period = _build_pricing_period(
-                provider_id=self._data[CONF_PROVIDER_ID],
-                distribution_area_id=self._data[CONF_DISTRIBUTION_AREA_ID],
-                tariff_plan_id=self._data[CONF_TARIFF_PLAN_ID],
-                user_input=_flatten_pricing_input(user_input),
-            )
-            self._data[CONF_PRICING_PERIODS] = [period.to_dict()]
-            return self.async_create_entry(title=self._data[CONF_NAME], data=self._data)
+            self._pricing_input = _flatten_pricing_input(user_input)
+            return await self._async_resolve_backfill()
 
         defaults = {
             SECTION_ELECTRICITY_PRICE: {
@@ -297,6 +309,64 @@ class HuEnergyTariffsConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=_pricing_schema(defaults),
             description_placeholders={"price_sheet_url": A1_OFFICIAL_PRICE_SHEET_URL},
         )
+
+    async def _async_resolve_backfill(self) -> ConfigFlowResult:
+        """Offer to seed initial state from Home Assistant's own recorded
+        history for the source sensor, capped at backfill_start_date()
+        (never earlier than this tariff year, never earlier than 1 Jan -
+        see backfill.py). Silently skipped (same auto-skip pattern as
+        the provider/tariff steps) whenever there's nothing to offer -
+        Recorder not loaded, or no history for this entity in the
+        window - so this never surfaces as a dead-end or an error."""
+        now = dt_util.utcnow()
+        tariff_plan = get_tariff_plan(self._data[CONF_TARIFF_PLAN_ID])
+        strategy = get_strategy(tariff_plan.strategy_key)
+        tariff_year_start, _ = strategy.tariff_year_bounds(now)
+        start = backfill_start_date(tariff_year_start=tariff_year_start, today=now.date())
+
+        deltas = await async_fetch_daily_deltas(
+            self.hass, self._data[CONF_SOURCE_ENTITY_ID], start, now.date()
+        )
+        if not deltas:
+            return self._async_finish(valid_from=None)
+
+        self._backfill_start = start
+        self._backfill_day_count = len(deltas)
+        self._backfill_total_kwh = sum(deltas.values())
+        return await self.async_step_backfill()
+
+    async def async_step_backfill(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            if user_input[CONF_BACKFILL_ENABLED]:
+                self._data[CONF_BACKFILL_ENABLED] = True
+                assert self._backfill_start is not None
+                valid_from = datetime.combine(self._backfill_start, time.min, tzinfo=UTC)
+                return self._async_finish(valid_from=valid_from)
+            return self._async_finish(valid_from=None)
+
+        return self.async_show_form(
+            step_id="backfill",
+            data_schema=vol.Schema({vol.Required(CONF_BACKFILL_ENABLED, default=True): bool}),
+            description_placeholders={
+                "day_count": str(self._backfill_day_count),
+                "total_kwh": f"{self._backfill_total_kwh:.1f}",
+                "since_date": self._backfill_start.isoformat() if self._backfill_start else "",
+            },
+        )
+
+    def _async_finish(self, *, valid_from: datetime | None) -> ConfigFlowResult:
+        assert self._pricing_input is not None
+        period = _build_pricing_period(
+            provider_id=self._data[CONF_PROVIDER_ID],
+            distribution_area_id=self._data[CONF_DISTRIBUTION_AREA_ID],
+            tariff_plan_id=self._data[CONF_TARIFF_PLAN_ID],
+            user_input=self._pricing_input,
+            valid_from=valid_from,
+        )
+        self._data[CONF_PRICING_PERIODS] = [period.to_dict()]
+        return self.async_create_entry(title=self._data[CONF_NAME], data=self._data)
 
     @staticmethod
     @callback

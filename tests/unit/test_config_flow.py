@@ -8,7 +8,8 @@ reconfigure and the provider/tariff auto-skip logic.
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from unittest.mock import patch
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -26,6 +27,7 @@ from custom_components.hu_energy_tariff.config_flow import (
     _tariff_plan_options,
 )
 from custom_components.hu_energy_tariff.const import (
+    CONF_BACKFILL_ENABLED,
     CONF_DISCOUNTED_PRICE_FT_PER_KWH,
     CONF_DISTRIBUTION_AREA_ID,
     CONF_DISTRIBUTION_CHARGE_FT_PER_KWH,
@@ -276,3 +278,122 @@ async def test_options_flow_opens_new_pricing_period_preserving_history(hass):
     assert periods[1].valid_to is None  # new period open-ended
     assert periods[1].price_components.energy_charge_discounted == 5.0
     assert periods[1].fixed_monthly_fee_ft == 200.0
+
+
+def test_build_pricing_period_backdates_valid_from_when_given():
+    period = _build_pricing_period(
+        provider_id="mvm_next",
+        distribution_area_id="eon",
+        tariff_plan_id="mvm_a1",
+        user_input={
+            CONF_QUOTA_KWH_PER_YEAR: 2523,
+            CONF_DISCOUNTED_PRICE_FT_PER_KWH: 4.39,
+            CONF_MARKET_PRICE_FT_PER_KWH: 31.8,
+            CONF_DISTRIBUTION_CHARGE_FT_PER_KWH: 23.4,
+            CONF_TRANSMISSION_CHARGE_FT_PER_KWH: 0.0,
+            CONF_FIXED_MONTHLY_FEE_FT: 120.5,
+        },
+        valid_from=datetime(2026, 8, 1, tzinfo=UTC),
+    )
+    assert period.valid_from == datetime(2026, 8, 1, tzinfo=UTC)
+
+
+_PRICING_SUBMISSION = {
+    SECTION_ELECTRICITY_PRICE: {
+        "quota_kwh_per_year": 2523,
+        "discounted_price_ft_per_kwh": 4.39,
+        "market_price_ft_per_kwh": 31.8,
+    },
+    SECTION_NETWORK_FEES: {
+        "distribution_charge_ft_per_kwh": 23.4,
+        "transmission_charge_ft_per_kwh": 0.0,
+        "fixed_monthly_fee_ft": 120.5,
+    },
+}
+
+
+async def _start_flow_through_pricing(hass):
+    hass.states.async_set(
+        "sensor.test_energy",
+        "100.0",
+        {"device_class": "energy", "state_class": "total_increasing", "unit_of_measurement": "kWh"},
+    )
+    await hass.async_block_till_done()
+
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            "name": "Test Home",
+            "source_entity_id": "sensor.test_energy",
+            "distribution_area_id": "eon",
+        },
+    )
+    return await hass.config_entries.flow.async_configure(result["flow_id"], _PRICING_SUBMISSION)
+
+
+async def test_backfill_step_offered_when_recorder_has_history(hass, freezer):
+    """Same auto-skip family as provider/tariff - shown only when there's
+    actually something to offer."""
+    freezer.move_to("2026-08-24T12:00:00+00:00")
+    with patch(
+        "custom_components.hu_energy_tariff.config_flow.async_fetch_daily_deltas",
+        return_value={date(2026, 8, 1): 5.0, date(2026, 8, 2): 3.0},
+    ):
+        result = await _start_flow_through_pricing(hass)
+
+    assert result["step_id"] == "backfill"
+    assert result["description_placeholders"]["day_count"] == "2"
+    assert result["description_placeholders"]["total_kwh"] == "8.0"
+    assert result["description_placeholders"]["since_date"] == "2026-08-01"
+
+
+async def test_backfill_step_skipped_when_no_recorder_history(hass, freezer):
+    freezer.move_to("2026-08-24T12:00:00+00:00")
+    with patch(
+        "custom_components.hu_energy_tariff.config_flow.async_fetch_daily_deltas",
+        return_value=None,
+    ):
+        result = await _start_flow_through_pricing(hass)
+
+    assert result["type"] == "create_entry"
+    assert CONF_BACKFILL_ENABLED not in result["data"]
+    period = PricingPeriod.from_dict(result["data"][CONF_PRICING_PERIODS][0])
+    # No backfill -> valid_from stays "now" (today), not backdated.
+    assert period.valid_from.date() == date(2026, 8, 24)
+
+
+async def test_accepting_backfill_backdates_the_pricing_period(hass, freezer):
+    freezer.move_to("2026-08-24T12:00:00+00:00")
+    with patch(
+        "custom_components.hu_energy_tariff.config_flow.async_fetch_daily_deltas",
+        return_value={date(2026, 8, 1): 5.0},
+    ):
+        result = await _start_flow_through_pricing(hass)
+        assert result["step_id"] == "backfill"
+
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"backfill_enabled": True}
+        )
+
+    assert result["type"] == "create_entry"
+    assert result["data"][CONF_BACKFILL_ENABLED] is True
+    period = PricingPeriod.from_dict(result["data"][CONF_PRICING_PERIODS][0])
+    assert period.valid_from == datetime(2026, 8, 1, tzinfo=UTC)
+
+
+async def test_declining_backfill_uses_todays_date_and_no_flag(hass, freezer):
+    freezer.move_to("2026-08-24T12:00:00+00:00")
+    with patch(
+        "custom_components.hu_energy_tariff.config_flow.async_fetch_daily_deltas",
+        return_value={date(2026, 8, 1): 5.0},
+    ):
+        result = await _start_flow_through_pricing(hass)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"backfill_enabled": False}
+        )
+
+    assert result["type"] == "create_entry"
+    assert CONF_BACKFILL_ENABLED not in result["data"]
+    period = PricingPeriod.from_dict(result["data"][CONF_PRICING_PERIODS][0])
+    assert period.valid_from.date() == date(2026, 8, 24)

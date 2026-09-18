@@ -75,6 +75,8 @@ Beállítások → Eszközök és szolgáltatások → Integráció hozzáadása
 
 (A szolgáltató- és tarifaválasztó képernyők automatikusan kimaradnak, amíg csak egy-egy lehetőség van — jelenleg MVM Next és A1 — és maguktól visszatérnek, amint egy második szolgáltató vagy tarifa is elérhető lesz.)
 
+Ha a Home Assistantban már van rögzített előzmény a kiválasztott szenzorhoz (pl. az már egy ideje fut, mielőtt ezt az integrációt hozzáadtad volna), felajánlunk egy harmadik képernyőt: ezt az előzményt használjuk a pontos keret- és költségkövetés induló alapjaként, ahelyett hogy ma nulláról kezdenénk. Ez legfeljebb a jelenlegi tarifaév kezdetéig (augusztus 1.) vagy a jelenlegi naptári év január 1-jéig nyúlik vissza, amelyik később van — és csak akkor jelenik meg, ha valóban van mit felajánlani.
+
 Az árak **nettó** árak (27% ÁFA nélkül) — az ÁFA-t az integráció automatikusan hozzáadja. Az alapértékek az MVM hivatalos árlapja alapján vannak előtöltve (a kedvezményes energiaár az 1. lépésben választott elosztói területtől függ, minden más nem) — érdemes ellenőrizni őket a tényleges számládon szereplő értékek alapján, ez egyben azt is igazolja, hogy az integráció végösszege megegyezik a ténylegesen kiszámlázott összeggel.
 
 Az árakat később az integráció **Konfigurálás** (opciók) folyamatán keresztül módosíthatod — ez egy új árazási érvényességi időszakot nyit meg a régi felülírása helyett, így a már felhalmozott költség helyes marad.

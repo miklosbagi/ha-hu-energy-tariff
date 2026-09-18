@@ -24,6 +24,13 @@ CONF_DISTRIBUTION_AREA_ID = "distribution_area_id"
 CONF_TARIFF_PLAN_ID = "tariff_plan_id"
 CONF_PRICING_PERIODS = "pricing_periods"
 
+# Set when the user accepted the config-flow backfill offer (see
+# backfill.py) - tells coordinator.py's first-ever setup to seed initial
+# state from Home Assistant's recorded history instead of a zero
+# baseline. Never set on reload/restart; only meaningful the one time a
+# config entry is first created.
+CONF_BACKFILL_ENABLED = "backfill_enabled"
+
 # Fields collected by the (currently A1-only) tariff_energy_prices step -
 # mirrors a Hungarian bill's "Villamosenergia ár" group. Net (VAT-excl.)
 # Ft/kWh - PriceComponents.effective_gross_price() applies VAT once, on

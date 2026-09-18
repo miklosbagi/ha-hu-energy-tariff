@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from . import tariffs  # noqa: F401  (import for registration side effects)
 from .const import (
+    CONF_BACKFILL_ENABLED,
     CONF_DISTRIBUTION_AREA_ID,
     CONF_PRICING_PERIODS,
     CONF_PROVIDER_ID,
@@ -53,10 +54,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     tariff_plan = get_tariff_plan(site.tariff_plan_id)
     strategy = get_strategy(tariff_plan.strategy_key)
 
+    backfill_enabled = entry.data.get(CONF_BACKFILL_ENABLED, False)
     coordinators: list[HuEnergyTariffsCoordinator] = []
     for meter in site.meters:
         coordinator = HuEnergyTariffsCoordinator(
-            hass, entry_id=entry.entry_id, site=site, meter=meter, strategy=strategy
+            hass,
+            entry_id=entry.entry_id,
+            site=site,
+            meter=meter,
+            strategy=strategy,
+            backfill_enabled=backfill_enabled,
         )
         await coordinator.async_setup()
         coordinators.append(coordinator)
