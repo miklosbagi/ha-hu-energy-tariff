@@ -15,7 +15,17 @@ jobs:
     # are pure fast-forward merges, not real work - a Tag/* label on them
     # is meaningless noise (Gitea doesn't mint releases anymore anyway,
     # see docs/RELEASING.md, but skip it regardless for tidiness).
-    if: ${{ github.head_ref != 'github-sync' }}
+    #
+    # Renovate PRs (renovate/*, see renovate.yml) default to no release
+    # too - confirmed live that dependency/CI-tooling bumps routinely
+    # touch zero shippable integration code (actions/checkout version,
+    # dev Python version, the e2e rig's HA docker tag), so an automatic
+    # Tag/Patch on every one of them meant a version release with no
+    # matching manifest.json bump every time - exactly the drift
+    # docs/RELEASING.md's manifest-bump rule exists to prevent. A human
+    # can still add Tag/* by hand on a specific Renovate PR that
+    # actually warrants a release.
+    if: ${{ github.head_ref != 'github-sync' && !startsWith(github.head_ref, 'renovate/') }}
     steps:
       # Every PR gets Tag/Patch by default (see docs/RELEASING.md) - the
       # author can remove it (or swap for Tag/Minor / Tag/Major) before

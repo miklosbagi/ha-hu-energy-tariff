@@ -4,7 +4,7 @@ Versioning follows `major.minor.patch` (e.g. `1.2.3`), driven entirely by labels
 
 ## How it works
 
-1. **Every new PR gets `Tag/Patch` automatically, unless it already has a `Tag/*` label** (`label-pr.yml`, fires on PR open, on both platforms - checks the PR's current labels first rather than adding unconditionally, after a real double-tagging bug where a label set deliberately right around PR creation ended up sitting alongside this workflow's own default).
+1. **Every new PR gets `Tag/Patch` automatically, unless it already has a `Tag/*` label or is a Renovate PR** (`label-pr.yml`, fires on PR open, on both platforms - checks the PR's current labels first rather than adding unconditionally, after a real double-tagging bug where a label set deliberately right around PR creation ended up sitting alongside this workflow's own default). Renovate PRs (`renovate/*`) are excluded on principle, not just as one more instance of the same check: confirmed live that dependency/CI-tooling bumps routinely touch zero shippable integration code, so an automatic release on every one of them meant a version bump with no matching `manifest.json` change - add `Tag/*` by hand on a Renovate PR that genuinely warrants a release.
 2. Before merging, the author can:
    - leave it as-is → a **patch** release (`x.y.Z`),
    - swap it for `Tag/Minor` → a **minor** release (`x.Y.0`),
